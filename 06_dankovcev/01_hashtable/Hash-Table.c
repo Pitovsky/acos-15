@@ -57,16 +57,18 @@ void write_table(const struct Table *table)
             printf("%s ", current_node->key);
             current_node = current_node->next;
         }
-        printf(" NULL\n");
+        printf("NULL\n");
     }
-    printf("\n");
+    //printf("\n");
 }
 
 struct Node* list_add(struct Node* inz, const char *key, const int value)
 {
     struct Node *new_node = malloc(sizeof(struct Node));
     new_node->next = inz;
-    new_node->key = key;
+    char *data = malloc(strlen(key));
+    data = strcpy(data, key);
+    new_node->key = data;
     new_node->value = value;
 
     return new_node;
@@ -110,6 +112,7 @@ void remove_element(struct Table *table, const char *key)
     if (strcmp(inz->key, key) == 0)
     {
         struct Node *temp = inz->next;
+        free(inz->key);
         free(inz);
         table->buckets[hash_key] = temp;
         return;
@@ -121,6 +124,7 @@ void remove_element(struct Table *table, const char *key)
     if ((inz->next != NULL) && (strcmp(inz->next->key, key) == 0))
     {
         struct Node *temp = inz->next->next;
+        free(inz->next->key);
         free(inz->next);
         inz->next = temp;
     }
@@ -136,6 +140,7 @@ void dispose_table(struct Table **table)
         {
             struct Node *deleted_ptr = current_ptr;
             current_ptr = current_ptr->next;
+            free(deleted_ptr->key);
             free(deleted_ptr);
         }
     }
