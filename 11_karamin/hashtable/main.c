@@ -3,7 +3,7 @@
 #include <string.h>
 #include "HT.h"
 
-#pragma warning (disable:4996)
+//#pragma warning (disable:4996)
 
 const int MAXCOUNT = 1000, tsize = 5, MaxStringSize = 100;
 

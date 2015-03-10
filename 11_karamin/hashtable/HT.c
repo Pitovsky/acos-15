@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "HT.h"
 
-#pragma warning (disable:4996)
+//#pragma warning (disable:4996)
 
 
 int CompareStrings(char* string1, char* string2){
