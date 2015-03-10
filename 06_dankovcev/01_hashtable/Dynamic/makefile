@@ -1,5 +1,3 @@
-.PHONY: all clean
-
 all:result
 
 result:main.o libmht.so
@@ -16,6 +14,3 @@ Hash-Table.o:Hash-Table.c
 Hash-Table.c:
 
 main.c:
-
-clean:
-	rm -rf hello *.o

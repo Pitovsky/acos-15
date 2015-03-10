@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "Hash-Table.h"
 
 const long long PRIME = 53;
 const int INPUT_STRING_SIZE = 200;
@@ -12,6 +13,7 @@ int main()
 
     if (f == NULL)
         return 1;
+
     int table_size;
     fscanf(f, "%d", &table_size);
 
@@ -31,7 +33,7 @@ int main()
 
         if (read_code != 1)
         {
-            dispose_table(&my_table);
+            dispose_table(&my_table, 1);
             free(input_str);
             fclose(f);
 
@@ -45,7 +47,14 @@ int main()
 
                 if (read_code != 2)
                     return 1;
-                add_element(my_table, input_str, input_value);
+
+                char *data = malloc(strlen(input_str));
+                data = strcpy(data, input_str);
+
+                int *value = malloc(sizeof(int));
+                *value = input_value;
+
+                my_table = add_element(my_table, data, value);
                 printf("\033[32mADD %s %d\n\n\033[0m", input_str, input_value);
                 break;
             case 'f':
@@ -75,7 +84,7 @@ int main()
          printf("----------------------------\n\n");
     }
 
-    dispose_table(&my_table);
+    dispose_table(&my_table, 1);
     free(input_str);
     fclose(f);
     return 0;
