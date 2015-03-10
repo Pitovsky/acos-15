@@ -13,7 +13,7 @@ struct list** MakeTable(int n){
     int i;
     struct list** result = (struct list**) malloc(sizeof(struct list*)*n);
     for(i=0;i<n;i++){
-        result[i] = ' ';
+        result[i] = NULL;
     }
     return result;
 };
@@ -24,7 +24,7 @@ int hash(char* v, int n){
 	int code=0;
 	
 	for(j=0;j<strlen(v);j++){
-        	i = (i + v[j]) % n;
+        	i = (i+v[j]) % n;
     	}
 	return(i);	
 };
@@ -44,10 +44,11 @@ int main()
 	int i,j,k,l,n;
 	char *str;
 	struct list** table = MakeTable(300);
+	str=(char*) malloc(sizeof(char)*250);
 	//scanf("%d", &n);
 	//for(i=0;i<n;i++)
 		scanf("%s", str);
 		l=hash(str, 300);	
-		table[l]=Add(table[l], str, 300);
+		table[l]=Add(table[l], str, l);
 	return(0);
 }
