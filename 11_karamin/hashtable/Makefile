@@ -1,7 +1,7 @@
-all:HashTable
+all:hashtable
 
 hashtable: HT.o main.o
-	gcc HT.o main.o -o HashTable
+	gcc HT.o main.o -o hashtable
 
 HT.o: HT.c
 	gcc -c HT.c -o HT.o

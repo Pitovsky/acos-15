@@ -60,6 +60,5 @@ int main()
 	//ClearTable(h, tsize);
 	//DeleteTable(h, tsize);
 
-	system("pause");
 	return 0;
 }
