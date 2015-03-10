@@ -11,7 +11,7 @@ int main()
 {
 
 	FILE* in;
-	in = fopen("input.txt", "r");
+	in = fopen("keys.txt", "r");
 	if (in == NULL) return 1;
 
 //Entering Data with a key
