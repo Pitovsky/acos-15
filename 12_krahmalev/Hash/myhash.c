@@ -19,12 +19,12 @@ struct list** MakeTable(int n){
 };
 
 
-int hash(char* v, int n){	
+int hash(char* v){	
 	int i=0,j;
 	int code=0;
 	
 	for(j=0;j<strlen(v);j++){
-        	i = (i+v[j]) % n;
+        	i = (i+v[j]) % 277;
     	}
 	return(i);	
 };
@@ -40,7 +40,7 @@ struct list* Add(struct list* to,char* v, int n){
 };
 
 void delete(struct list** table, char* v){
-	int ind=hash(v,300);
+	int ind=hash(v);
         struct list* ex = table[ind];
         if (table[ind] != NULL){
         	if (table[ind]->key == v){
@@ -69,22 +69,36 @@ void delete(struct list** table, char* v){
 void deleteTable(struct list** table){
 	int i,j;
 	struct list *one, *two;
-	for(i=0;i<300;i++)
+	for(i=0;i<277;i++)
 		free(table[i]);
 	printf("Table free now\n");
 }
 
+int* Search(char *v, struct list**table){
+	int ind=hash(v);
+	struct list* odin = table[ind];
+	int key=0;
+	while((odin!=NULL)&&(key==0)){
+		if(odin->key==v){key=1;}
+			else{odin=odin->next;};
+	};
+	if(key==1){return&(odin->value);}
+		else{return NULL;};
+};
+
 int main()
 {
-	int i,j,k,l,n;
+	int i,j,k,l,n; int *co;
 	char *str;
-	struct list** table = MakeTable(300);
+	struct list** table = MakeTable(277);
 	str=(char*) malloc(sizeof(char)*250);
 	//scanf("%d", &n);
 	//for(i=0;i<n;i++)
 		scanf("%s", str);
-		l=hash(str, 300);	
+		l=hash(str);	
 		table[l]=Add(table[l], str, l);
-		deleteTable(table);		
+		//deleteTable(table);
+		co=Search(str,table);
+		printf("%d", *co);		
 	return(0);
 }
