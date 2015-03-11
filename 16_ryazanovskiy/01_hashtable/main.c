@@ -89,31 +89,55 @@ void* findInHashTable(HashTable_t* table, const char* key)
 
 void eraseFromHashTable(HashTable_t* table, const char* key)
 {
+
     Hash_t hash = hashString(key) % table->size;
     if (strcmp(table->bins[hash]->key, key) == 0)
     {
+        List_t* p = table->bins[hash];
         table->bins[hash] = table->bins[hash]->next;
-        free(table->bins[hash]);
+        free(p->key);
+        free(p);
+        return;
     }
-    for (List_t **prev = table->bins + hash, **curr = &table->bins[hash]->next;
-        *curr;
-        prev = curr, curr = &(*curr)->next)
-        if (strcmp(key, (*curr)->key) == 0)
-        {
 
+    for (List_t *prev = table->bins[hash], *curr = table->bins[hash]->next; curr;
+        prev = curr, curr = curr->next)
+    {
+        if (strcmp(key, curr->key) == 0)
+        {
+            prev->next = curr->next;
+            free(curr->key);
+            free(curr);
+            break;
         }
-}
+    }}
+
+#define v(x) ((void*)(size_t)(x))
 
 int main()
 {
     HashTable_t* table = createHashTable(2000000);
 
-    for (int i = 0; i < 10000000; i++)
+    insertToHashTable(table, "Stepan", v(15));
+    eraseFromHashTable(table, "Stepan");
+    srand(2);
+    for (int i = 0; i < 100000; i++)
     {
         char string[10] = "";
         for (int k = 0; k < 9; k++)
-            string[k] = rand() & 0xff;
-        insertToHashTable(table, string, (void*)(i + 42));
+            string[k] = (char)(rand() & 0xff);
+        insertToHashTable(table, string, v(i + 42));
     }
+
+    srand(2);
+    for (int i = 0; i < 100000; i++)
+    {
+        char string[10] = "";
+        for (int k = 0; k < 9; k++)
+            string[k] = (char)(rand() & 0xff);
+        eraseFromHashTable(table, string);
+    }
+
+
     killHashTable(table);
 }
