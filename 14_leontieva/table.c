@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include"hash-table.h"
 
 typedef struct node{
     char* key;
@@ -114,4 +115,18 @@ void delete(char* key, node **T, int M)
 			N = NULL;
 		}
 	}
+}
+
+void delete_table(node** T, int M){
+ 	int i;
+ 	for (i = 0; i < M; i++){
+        if (T[i]== NULL) continue;
+        while (T[i] != NULL) {
+            delete(T[i], T, M);
+        }
+	}
+}
+
+void show_node(char* key, node** T, int M){
+    printf("%s %d\n", search_by_key(key, T, M)->key, hash(key, M) );
 }
