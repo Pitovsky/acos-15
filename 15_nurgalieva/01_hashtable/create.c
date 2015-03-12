@@ -1,6 +1,4 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+# include "stdafx.h"
 
 /*нужны операции добавления в начало списка - есть, удаление из любого места , удаление самого списка - есть, создание списка - -есть*/
 
@@ -19,7 +17,7 @@ struct List {
 /*создание пустого списка*/
 struct List* createList()
 {
-	struct List* list = (struct List*)malloc(10 * sizeof(struct List));
+	struct List* list = (struct List*)malloc(sizeof(struct List));
 	list->head = NULL;
 	list->tail = NULL;
 	return list;
@@ -29,13 +27,18 @@ struct List* createList()
 void deleteList(struct List** list) /*моя функция удаления листа*/
 {
 	struct Node* tmp = NULL;
-	while ((*list)->head)
+	if ((*list) != NULL)
 	{
-		tmp = (*list)->head;
-		(*list)->head = (*list)->head->next;
-		free(tmp);
+		while ((*list)->head)
+		{
+			tmp = (*list)->head;
+			(*list)->head = (*list)->head->next;
+			free(tmp);
+		}
+		free(*list);
+		(*list) = NULL;
+		return;
 	}
-	free(*list);
 	return;
 }
 
@@ -45,7 +48,7 @@ struct Node* findInto(struct List* list, const char* str)
 	struct Node * tmp = list->head;
 	while (tmp)
 	{
-		if (str == tmp->value)
+		if (strcmp(str, tmp->value) == 0)
 		{
 			return tmp;
 		}
@@ -58,16 +61,25 @@ struct Node* findInto(struct List* list, const char* str)
 void DeleteFromList(struct List* list, const char * str)
 {
 	struct Node* tmp = findInto(list, str);
-	if (!NULL)
+	if (tmp)
 	{
-		if (tmp->next)
-		{
-			tmp->next->prev = tmp->prev;
-		}
 		if (tmp->prev)
 		{
 			tmp->prev->next = tmp->next;
 		}
+		else
+		{
+			list->head = tmp->next;
+		}
+		if (tmp->next)
+		{
+			tmp->next->prev = tmp->prev;
+		}
+		else
+		{
+			list->tail = tmp->prev;
+		}
+		free(tmp);
 	}
 	else
 	{
@@ -79,7 +91,7 @@ void DeleteFromList(struct List* list, const char * str)
 /*вставка в начало списка*/
 void InsertIntoHead(struct List* list, const char* value)
 {
-	struct Node* tmp = (struct Node*)malloc(sizeof(struct Node*));
+	struct Node* tmp = (struct Node*)malloc(sizeof(struct Node));
 	tmp->value = value;
 	tmp->next = list->head;
 	tmp->prev = NULL;
@@ -98,16 +110,21 @@ void InsertIntoHead(struct List* list, const char* value)
 /*функция для печати значений списка*/
 void print(const char* str, size_t index)
 {
-	printf("(%d) -> %s \n", index, str);
+	printf("(%d) -> %s \t", index, str);
 	return;
 }
 
 /*печать списка*/
 void printList(struct List *list, void(*print)(const char*, size_t))
 {
+	if (list == NULL)
+	{
+		printf("There's no list\n");
+		return;
+	}
 	struct Node * tmp = list->head;
 	size_t index = 1;
-	while (tmp != NULL)
+	while (tmp)
 	{
 		print(tmp->value, index);
 		index++;
@@ -116,39 +133,19 @@ void printList(struct List *list, void(*print)(const char*, size_t))
 	return;
 }
 
-void TestFanc()
+void TestFunc()
 {
 	struct List* list = createList();
 	InsertIntoHead(list, "Andrey");
 	//list = realloc(list, 2*sizeof(struct List));
 	InsertIntoHead(list, "Olya");
-	printList(list, print);
-	struct Node* tmp = findInto(list, "Andrey");
-	printf("%s \n", tmp->prev->value);
-	DeleteFromList(list, "Olya");
-	printList(list, print);
-	//list_delete(&list);
-	//deleteList(list);
-	//printList(&list, print);
-	return;
+	//printList(list, print);
+	struct Node* tmp = findInto(list, "Olya");
+	printf("%s \n", tmp->value);
+	//leteFromList(list, "Olya");
+	//printList(list, print);
+	//deleteList(&list);
+	//printList(list, print);
 }
 
-/*void readFile(FILE* f)
-{
-string* str = (string*)malloc(sizeof(string));
-int i = 0;
-while (!EOF)
-{
-fscanf(f, )
-}
-}*/
-
-int main()
-{
-	TestFanc();
-	//FILE* f = fopen("input", r);
-	//readFile(f);
-	getchar();
-	return 0;
-}
 
