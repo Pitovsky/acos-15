@@ -79,19 +79,21 @@ void ElementDel (struct list *table, char *key){
 	int f = 0;
 	struct node *a = table[ind].first;
 	struct node *buf;
-	if (strcmp(a->key,key) == 0){
-		f = -1;
-		table[ind].first = a->next;
-		free(a);
-	}else{
-		while((a->next != NULL) && (f == 0)){
-			if (strcmp((a->next)->key,key) == 0){
-				f = -1;
-				buf = a->next;
-				a->next = (a->next)->next;
-				free(buf);
-			}else{
-				a = a->next;
+	if (a != NULL){
+		if (strcmp(a->key,key) == 0){
+			f = -1;
+			table[ind].first = a->next;
+			free(a);
+		}else{
+			while((a->next != NULL) && (f == 0)){
+				if (strcmp((a->next)->key,key) == 0){
+					f = -1;
+					buf = a->next;
+					a->next = (a->next)->next;
+					free(buf);
+				}else{
+					a = a->next;
+				}
 			}
 		}
 	}
