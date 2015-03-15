@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include"hash-table.h"
+#include "hash.h"
 
 typedef struct node{
     char* key;
@@ -22,8 +22,7 @@ unsigned int hash1(char* key, unsigned int M)
   const unsigned int m = 0x5bd1e995;
   const unsigned int seed = 0;
   const int r = 24;
-
-  unsigned int h = seed ^ M;
+   unsigned int h = seed ^ M;
 
   const unsigned char * data = (const unsigned char *)key;
 
@@ -53,7 +52,7 @@ unsigned int hash1(char* key, unsigned int M)
       h ^= data[2] << 16;
     case 2:
       h ^= data[1] << 8;
-    case 1:
+         case 1:
       h ^= data[0];
       h *= m;
     };
@@ -67,66 +66,67 @@ unsigned int hash1(char* key, unsigned int M)
 
 void insert1(char *key, node** T, int M)
 {
-	int index = hash(key, M);
-	T[index] = (node*)malloc(sizeof(node));
-	if (T[index] != NULL) {
-		T[index]->next = NULL;
-		T[index]->key = key;
-	}
+        int index = hash(key, M);
+        T[index] = (node*)malloc(sizeof(node));
+        if (T[index] != NULL) {
+                T[index]->next = NULL;
+                T[index]->key = key;
+        }
 }
 /*void insert (char *key, node** T, int M)//добавляет элемент в голову T[index], старый сдвигается вглубь
 {
-	int index = hash(key, M);
-	node *new_node = (node*)malloc(sizeof(node));
-	if (new_node) {
+        int index = hash(key, M);
+        node *new_node = (node*)malloc(sizeof(node));
+        if (new_node) {
         new_node->key = T[index]->key;
         new_node->next = T[index]->next;
-		T[index]->key = key;
-		T[index]->next = new_node;
-	}
+                T[index]->key = key;
+                T[index]->next = new_node;
+        }
 }
 */
 node* search_by_key(char *key, node** T, int M){
     int index = hash(key, M);
     while (T[index]) {
-		if (T[index]->key == key) break;
-		T[index] = T[index]->next;
-	}
-	return T[index];
+                if (T[index]->key == key) break;
+                T[index] = T[index]->next;
+        }
+        return T[index];
 }
 
 void delete(char* key, node **T, int M)
 {
-	int index = hash(key, M);
-	node* N = search_by_key(key, T, M);
-	node *tmp = NULL;
-	if (T[index] == NULL || N == NULL) return;
+        int index = hash(key, M);
+        node* N = search_by_key(key, T, M);
+        node *tmp = NULL;
+        if (T[index] == NULL || N == NULL) return;
 
-	if (T[index]->key == key) {//если это голова
-		T[index] = T[index]->next;
-		free(N);
-		N = NULL;
-	} else {//ищем элемент перед N и перенаправляем указатель
-		tmp = T[index];
-		while (tmp->next && tmp->next != N) tmp = tmp->next;
-		if (tmp->next) {
-			tmp->next = N->next;
-			free(N);
-			N = NULL;
-		}
-	}
+        if (T[index]->key == key) {//если это голова
+                T[index] = T[index]->next;
+                free(N);
+                N = NULL;
+        } else {//ищем элемент перед N и перенаправляем указатель
+                tmp = T[index];
+                while (tmp->next && tmp->next != N) tmp = tmp->next;
+                if (tmp->next) {
+                        tmp->next = N->next;
+                        free(N);
+                        N = NULL;
+                }
+        }
 }
-
+/*
 void delete_table(node** T, int M){
- 	int i;
- 	for (i = 0; i < M; i++){
+        int i;
+        for (i = 0; i < M; i++){
         if (T[i]== NULL) continue;
         while (T[i] != NULL) {
             delete(T[i], T, M);
         }
-	}
-}
+        }
+}*/
 
 void show_node(char* key, node** T, int M){
     printf("%s %d\n", search_by_key(key, T, M)->key, hash(key, M) );
 }
+
