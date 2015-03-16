@@ -1,22 +1,45 @@
 #include<stdio.h>
 
 int main(){
+	FILE *f = fopen("input.txt", "r");
+	if (f == NULL) {return 1;}
+
 	struct list* a = CreateTable();
-	int n = 2;
-	int i;
 	int item;
+	int buf;
 	char key[30];
-	for (i = 0; i < n; i++){
-		scanf("%d%s",&item,key);
-		ElementAdd(a,item,key);
-		printf("%d\n",hash(key));
+	int comand;
+	comand = fgetc(f);
+	while (comand != EOF){
+	
+		if(comand == 'a'){
+			fscanf(f, "%s%d", key, &item);
+			ElementAdd(a, item, key);
+		}
+
+		if(comand == 's'){
+			fscanf(f, "%s", key);
+			ElementSearch(a, key);
+		}
+
+		if(comand == 'd'){
+			fscanf(f, "%s", key);
+			ElementDel(a, key);
+		}
+
+		if(comand == 'p'){
+			ShuntPrintTable(a);
+		}
+
+		if(comand == 'h'){
+			fscanf(f, "%s", key);
+			buf = hash(key);
+			printf("%d", buf);		
+		}
+
+		comand = fgetc(f);
 	}
-	ShuntPrintTable(a);
-	scanf("%s",key);
-	ElementSearch(a,key);
-	ShuntPrintTable(a);
-	ElementDel(a,key);
-	ShuntPrintTable(a);
+	fclose(f);
 	DeleteTable(a);
 	return(0);
 }

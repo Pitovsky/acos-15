@@ -42,6 +42,7 @@ void DeleteTable (struct list *table){
 		while (table[i].first != NULL){
 			a = table[i].first;
 			table[i].first=table[i].first->next;
+			free(a->key);
 			free(a);
 		}
 	}
@@ -49,10 +50,14 @@ void DeleteTable (struct list *table){
 }
 
 void ElementAdd (struct list *table, int item, char *key){
+	int i;
 	int ind = hash(key);
 	struct node *a =(struct node *)malloc(sizeof(struct node));
 	a->item = item;
-	a->key = key;
+	a->key =(char *)malloc((strlen(key)+1)*sizeof(char));
+	for (i=0;i<=strlen(key);i++){
+		a->key[i] = key[i];
+	}
 	a->next = NULL;
 	ListAdd(&(table[ind]), a);
 }
@@ -83,6 +88,7 @@ void ElementDel (struct list *table, char *key){
 		if (strcmp(a->key,key) == 0){
 			f = -1;
 			table[ind].first = a->next;
+			free(a->key);
 			free(a);
 		}else{
 			while((a->next != NULL) && (f == 0)){
@@ -90,6 +96,7 @@ void ElementDel (struct list *table, char *key){
 					f = -1;
 					buf = a->next;
 					a->next = (a->next)->next;
+					free(buf->key);
 					free(buf);
 				}else{
 					a = a->next;
@@ -108,7 +115,7 @@ void ShuntPrintTable(struct list *table){
 			printf("%d ",i);
 			a = table[i];
 			while (a.first != NULL){
-				printf("%d ",a.first->item);
+				printf("%d %s ",a.first->item, a.first->key);
 				a.first = a.first->next;
 			}
 		printf("\n");

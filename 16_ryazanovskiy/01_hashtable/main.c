@@ -14,6 +14,7 @@ typedef struct List_t
     struct List_t* next;
 } List_t;
 
+
 void killList(List_t* list)
 {
     if (list)
@@ -25,7 +26,7 @@ void killList(List_t* list)
 }
 
 typedef uint64_t Hash_t;
-const static Hash_t HASH_BASE = 257, HASH_MOD = (1ull << 61) + 15ull;
+static const Hash_t HASH_BASE = 257, HASH_MOD = (1ull << 61) + 15ull;
 
 typedef struct HashTable_t
 {
@@ -89,7 +90,6 @@ void* findInHashTable(HashTable_t* table, const char* key)
 
 void eraseFromHashTable(HashTable_t* table, const char* key)
 {
-
     Hash_t hash = hashString(key) % table->size;
     if (strcmp(table->bins[hash]->key, key) == 0)
     {
@@ -100,8 +100,9 @@ void eraseFromHashTable(HashTable_t* table, const char* key)
         return;
     }
 
-    for (List_t *prev = table->bins[hash], *curr = table->bins[hash]->next; curr;
-        prev = curr, curr = curr->next)
+    for (List_t *prev = table->bins[hash], *curr = table->bins[hash]->next;
+         curr;
+         prev = curr, curr = curr->next)
     {
         if (strcmp(key, curr->key) == 0)
         {
@@ -137,7 +138,6 @@ int main()
             string[k] = (char)(rand() & 0xff);
         eraseFromHashTable(table, string);
     }
-
 
     killHashTable(table);
 }
