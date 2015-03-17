@@ -2,16 +2,16 @@ struct Table* createTable(int size);
 
 int hashFunction(char* key, int size);
 
-struct Table* insert(char* Newkey, struct Table* hashTable);
+struct Table* insert(char* Newkey, void* data, struct Table* hashTable);
 
-char contains(char* key, struct Table* hashTable);
+int contains(char* key, struct Table* hashTable);
 
-struct Table* delete(char* key, struct Table* hashTable);
+void delete(char* key, struct Table* hashTable);
 
 void outTable(struct Table* hashTable);
 
-void deleteList(struct ListNode* currentNode);
+struct Table* hashTableResize(struct Table* oldHashTable);
 
-struct Table* clearTable(struct Table* hashTable);
+void clearTable(struct Table* hashTable);
 
 struct Table* getDataFromConsole(struct Table* hashTable, int number);
