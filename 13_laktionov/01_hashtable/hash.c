@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdlib.h>
+#include "hash.h"
 
 struct ListNode{
     char* key;
@@ -11,14 +12,16 @@ struct ListNode{
 };
 
 struct Table{
-    int size;
+    int numberOfCells;
+    int numberOfElements;
     struct ListNode** cell;
 };
 
 struct Table* createTable(int size){
     struct Table* hashTable = (struct Table*)malloc(size*sizeof(struct Table));
     hashTable->cell = (struct ListNode**)malloc(size*sizeof(struct ListNode*));
-    hashTable->size = size;
+    hashTable->numberOfCells = size;
+    hashTable->numberOfElements = 0;
     for (int i = 0; i < size; ++i)
         hashTable->cell[i] = NULL;
     return hashTable;
@@ -32,14 +35,19 @@ int hashFunction(char* key, int size){
     return (hashSum % size);
 }
 
-struct Table* insert(char* Newkey, struct Table* hashTable){
-    char *key;
-    key = malloc(sizeof(*Newkey*255));
-    //*key = *Newkey;//*(Newkey);
+
+struct Table* hashTableResize(struct Table* oldHashTable);
+
+struct Table* insert(char* Newkey, void* data, struct Table* hashTable){
+    hashTable->numberOfElements++;
+    if (hashTable->numberOfElements > 2 * hashTable->numberOfCells)
+        hashTable = hashTableResize(hashTable);
+    char *key = malloc(sizeof(char)*strlen(Newkey));
     memmove(key, Newkey, strlen(Newkey));
-    int hashPos = hashFunction(key, hashTable->size);
+    int hashPos = hashFunction(key, hashTable->numberOfCells);
     struct ListNode* newNode = (struct ListNode*)malloc(sizeof(struct ListNode));
     newNode->key = key;
+    newNode->data = data;
     
     if (hashTable->cell[hashPos] == NULL){
         newNode->prev = NULL;
@@ -56,8 +64,25 @@ struct Table* insert(char* Newkey, struct Table* hashTable){
     return hashTable;
 }
 
+struct Table* hashTableResize(struct Table* oldHashTable){
+    struct Table* newHashTable = createTable(2*oldHashTable->numberOfCells);
+    for (int i = 0; i < oldHashTable->numberOfCells; ++i){
+        if (oldHashTable->cell[i] != NULL){
+            struct ListNode* currentNode = oldHashTable->cell[i];
+            while (currentNode->next != NULL){
+                currentNode = currentNode->next;
+                insert(currentNode->key, currentNode->data, newHashTable);
+                free (currentNode->prev);
+            }
+            insert(currentNode->key, currentNode->data, newHashTable);
+            free (currentNode);
+        }
+    }
+    return newHashTable;
+}
+
 int contains(char* key, struct Table* hashTable){
-    int hashPos = hashFunction(key, hashTable->size);
+    int hashPos = hashFunction(key, hashTable->numberOfCells);
     if (hashTable->cell[hashPos] == NULL)
         return 0;
     struct ListNode* currentNode = hashTable->cell[hashPos];
@@ -71,44 +96,31 @@ int contains(char* key, struct Table* hashTable){
     return 0;
 }
 
-void deleteList(struct ListNode* currentNode){
-    free (currentNode);
-    currentNode = NULL;
-}
-
-struct Table* delete(char* key, struct Table* hashTable){
-    int hashPos = hashFunction(key, hashTable->size);
-    if (contains(key, hashTable)==0)
-        return hashTable;
+void delete(char* key, struct Table* hashTable){
+    int hashPos = hashFunction(key, hashTable->numberOfCells);
+    if (contains(key, hashTable) == 0)
+        return;
+    hashTable->numberOfElements--;
     struct ListNode* currentNode = hashTable->cell[hashPos];
     while(1){
         if (strcmp(currentNode->key, key)==0)
             break;
         currentNode = currentNode->next;
     }
-    if (currentNode->prev == NULL){ //удаляется первый
-        if (currentNode->next != NULL){
-            currentNode->next->prev = NULL;
-            hashTable->cell[hashPos] = currentNode->next;
-        }else{
-            hashTable->cell[hashPos] = NULL;
-        }
-        deleteList(currentNode);
-        return hashTable;
+    
+    if (currentNode->prev){
+        currentNode->prev->next = currentNode->next;
+    }else{
+        hashTable->cell[hashPos] = currentNode->next;
     }
-    if (currentNode->next == NULL){ //удаляется последний
-        currentNode->prev->next = NULL;
-        deleteList(currentNode);
-        return hashTable;
-    }
-    currentNode->prev->next = currentNode->next;
-    currentNode->next->prev = currentNode->prev;
-    deleteList(currentNode);
-    return hashTable;
+    if (currentNode->next)
+        currentNode->next->prev = currentNode->prev;
+    free(currentNode);
+    return;
 }
 
 void outTable(struct Table* hashTable){
-    for (int i = 0; i < hashTable->size; ++i){
+    for (int i = 0; i < hashTable->numberOfCells; ++i){
         if (hashTable->cell[i] != NULL){
             struct ListNode* currentNode = hashTable->cell[i];
             printf("cell %d: ", i);
@@ -122,19 +134,19 @@ void outTable(struct Table* hashTable){
     }
 }
 
-struct Table* clearTable(struct Table* hashTable){
-    for (int i = 0; i < hashTable->size; ++i){
+void clearTable(struct Table* hashTable){
+    for (int i = 0; i < hashTable->numberOfCells; ++i){
         if (hashTable->cell[i] != NULL){
             struct ListNode* currentNode = hashTable->cell[i];
             while (currentNode->next != NULL){
                 currentNode = currentNode->next;
-                deleteList (currentNode->prev);
+                free (currentNode->prev);
             }
-            deleteList (currentNode);
-            hashTable->cell[i] = NULL;
+            free (currentNode);
+        }else{
+            free(hashTable->cell[i]);
         }
     }
-    return hashTable;
 }
 
 struct Table* getDataFromConsole(struct Table* hashTable, int number){
@@ -142,7 +154,7 @@ struct Table* getDataFromConsole(struct Table* hashTable, int number){
     printf("Enter keys: ");
     for (int i = 0; i < number; ++i){
         scanf("%s", key);
-        hashTable = insert(key, hashTable);
+        hashTable = insert(key, NULL,  hashTable);
     }
     return hashTable;
 }
