@@ -8,8 +8,6 @@
 
 #include "hash.h"
 
-#define _XOPEN_SOURCE 500
-
 static const int MEM_ALLOCATION_ERROR = 101;
 
 void throwException(int code)
