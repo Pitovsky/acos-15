@@ -5,7 +5,7 @@
 
 //#pragma warning (disable:4996)
 
-const int MAXCOUNT = 1000, MaxStringSize = 100;
+const int MaxStringSize = 100;
 
 int main()
 {
@@ -23,10 +23,10 @@ int main()
 	scanf("%d", &tsize);
 
 //Entering Data with a key from file
-	int count, i, finish;
-	fscanf(in, "%d", &finish);
-	struct data** input = (struct data**)malloc(finish*sizeof(struct data*));
-	for (i = 0; i < finish; ++i){
+	int count, i, NumberOfInputData;
+	fscanf(in, "%d", &NumberOfInputData);
+	struct data** input = (struct data**)malloc(NumberOfInputData*sizeof(struct data*));
+	for (i = 0; i < NumberOfInputData; ++i){
 		input[i] = (struct data*)malloc(MaxStringSize*sizeof(struct data));
 		input[i]->KEY = (char*)malloc(MaxStringSize*sizeof(char));
 		fscanf(in, "%s %d", input[i]->KEY, &(input[i]->data));
@@ -95,7 +95,7 @@ int main()
 
 
 //Clearing and deleting table
-	ClearTable(h, tsize);
+	ClearTable(h);
 	printf("\nTable cleared!\n");
 	//PrintTable(h);
 	DeleteTable(h);
@@ -103,6 +103,6 @@ int main()
 
 	printf("\nAll good.\n");
 	
-	system("pause");
+//	system("pause");
 	return 0;
 }
