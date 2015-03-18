@@ -1,22 +1,21 @@
-all: prog
+all:program
 
-prog: main.o hash.o tests.o
-  gcc main.o hash.o tests.o prog 
+program:hash.o libhash.so
+	LD_LIBRARY_PATH=/Users/lokotochek/Documents/acos-15/13_laktionov/01_hashtable:$LD_LIBRARY_PATH
+		gcc -L/Users/lokotochek/Documents/acos-15/13_laktionov/01_hashtable tests.c -o program -lhash
 
-main.o: main.c
-  gcc -c main.c -o main.o
+libhash.so: hash.o
+	gcc -shared -o libhash.so hash.o
 
-tests.o: tests.c
-  gcc -c tests.c -o tests.o
-
-hash.o: hash.c
-  gcc -c hash.c -o hash.o
-
-main.c:
+tests.o:
+	gcc -c -Wvisibility tests.c
 
 tests.c:
 
-hash.c: 
+hash.o: hash.c
+	gcc -fPIC -c -Wvisibility hash.c
 
+hash.c:
+        
 clean:
-  rm main.o tests.o hash.h
+	rm *.o

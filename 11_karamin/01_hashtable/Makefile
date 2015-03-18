@@ -1,15 +1,15 @@
 all:hashtable
 
-hashtable: HT.o main.o
-	gcc HT.o main.o -o hashtable
+hashtable: HT.o test.o
+	gcc HT.o test.o -o hashtable
 
 HT.o: HT.c
 	gcc -c HT.c -o HT.o
-main.o: main.c
-	gcc -c main.c -o main.o
+test.o: test.c
+	gcc -c test.c -o test.o
 HT.c:
 
-main.c:
+test.c:
 
 clean:
-	rm main.o HT.o
+	rm test.o HT.o

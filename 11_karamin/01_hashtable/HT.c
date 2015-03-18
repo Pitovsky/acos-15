@@ -2,64 +2,93 @@
 #include <stdlib.h>
 #include "HT.h"
 
-//#pragma warning (disable:4996)
+#pragma warning (disable:4996)
 
-
-int CompareStrings(char* string1, char* string2){
-	int i = 0;
-	while (1){
-		if (string1[i] == string2[i]){
-			if (string1[i] == '\0') return 1;
-			else i++;
-		}
-		else return 0;
-	}
-};
-int FileReadString(FILE* f, char* s)
+struct table* CreateTable(int tsize)
 {
-	char t = 'a';
-	while (t != '\0' && t != ' ' && t != '\n' && !feof(f)){
-		fscanf(f, "%c", &t);
-		if (t != '\0' && t != ' ' && t != '\n') (*s) = t;
-		s++;
-	}
-	s[-1] = '\0';
-	return 0;
-}
-int ReadString(char* s){
-	char t = 'a';
-	while (t != '\0' && t != ' ' && t != '\n'){
-		scanf("%c", &t);
-		if (t != '\0' && t != ' ' && t != '\n')
-			(*s) = t;
-		s++;
-	}
-	s[-1] = '\0';
-	return 0;
-}
-
-
-struct node** CreateTable(int tsize){
-	struct node** table = (struct node**)malloc(tsize*sizeof(struct node*)); int i;
-	for (i = 0; i < tsize; ++i)
-	{
-		table[i] = (struct node*)malloc(sizeof(struct node));
-		table[i]->next = NULL;
-		table[i]->previous = NULL;
-		table[i]->input = NULL;
-	}
-	return table;
-}
-void PrintTable(struct node** table, int tsize){
 	int i;
+	struct table* Table = (struct table*)malloc(sizeof(struct table));
+	Table->Size = tsize;
+	Table->NumberOfElements = 0;
+	Table->mytable = (struct node**)malloc(tsize*sizeof(struct node*));
+	for (i = 0; i < tsize; ++i) Table->mytable[i] = NULL;
+	return Table;
+}
+int InsertInTheTable(struct table* Table, struct data* data)
+{
+	int hash = HashU(data->KEY, Table->Size);
+	struct node* temp = Table->mytable[hash];
+
+	struct node* p = (struct node*)malloc(sizeof(struct node));
+	p->input = data;
+	p->next = temp;
+	p->previous = NULL;
+	if (temp != NULL) temp->previous = p;
+	Table->mytable[hash] = p;
+
+	Table->NumberOfElements++;
+}
+struct data* FindInTheTable(struct table* table, key KEY)
+{
+	int hash = HashU(KEY, table->Size);
+	struct node* p = table->mytable[hash];
+	while (p != NULL && strcmp(p->input->KEY, KEY) != 0)
+		p = p->next;
+	if (p != NULL) return p->input;
+	else return NULL;
+}
+int DeleteFromTable(struct table* table, key KEY)
+{
+	int hash = HashU(KEY, table->Size);
+	struct node* p = table->mytable[hash];
+	struct node* temp; char deleted = 0;
+	while (p != NULL)
+	{
+		temp = p->next;
+		if (!strcmp(p->input->KEY, KEY))
+		{
+			if (p->previous != NULL)
+				p->previous->next = p->next;
+			else
+				table->mytable[hash] = temp;
+
+			if (p->next != NULL)
+				p->next->previous = p->previous;
+
+			free(p->input);
+			free(p);
+			table->NumberOfElements--;
+
+			printf("\n%s was deleted.", KEY);
+			deleted = 1;
+		}
+		p = temp;
+	}
+	if (!deleted) printf("Nothing was deleted...");
+	return 0;
+}
+
+void PrintTable(struct table* table){
+	int i, tsize = table->Size;
+	struct node* p;
+	
 	for (i = 0; i < tsize; ++i){
-		printf("%d -->", i);
-		struct node* p = table[i]->next;
-		while (p != NULL){
+		p = table->mytable[i];
+		printf("(Hash == %d) -->", i);
+		while (p != NULL)
+		{
 			printf("%s<-->", p->input->KEY);
 			p = p->next;
 		}
 		printf("NULL\n");
+	}
+}
+void PrintList(struct node* list)
+{
+	while (list != NULL)
+	{
+		printf("%d\t", list->input->data);
+		list = list->next;
 	}
 }
 int HashU(char* s, int M)
@@ -71,64 +100,26 @@ int HashU(char* s, int M)
 	}
 	return h;
 }
-int Insert(struct node** table, int tsize, struct data* datain){
-	int hash = HashU(datain->KEY, tsize);
-	struct node* p = (struct node*)malloc(sizeof(struct node));
 
-	p->next = table[hash]->next;
-	p->previous = table[hash];
-
-	if (p->next != NULL)
-		p->next->previous = p;
-	p->previous->next = p;
-
-
-	p->input = datain;
-	return 0;
-}
-int Delete(struct node** table, int tsize, key KEY){
-	int hash = HashU(KEY, tsize);
-	struct node* p = table[hash]->next;
-	struct node* temp;
-	while (p != NULL){
-		temp = p->next;
-		if (CompareStrings(p->input->KEY, KEY)){
-			p->previous->next = p->next;
-			if (p->next != NULL)
-				p->next->previous = p->previous;
-			free(p->input);
-			free(p);
-		}
-		p = temp;
-	}
-	return 0;
-}
-void ClearTable(struct node** table, int tsize){
+void ClearTable(struct table* table){
 	int i;
 	struct node *p, *temp;
-	for (i = 0; i < tsize; ++i){
-		p = table[i]->next;
+	for (i = 0; i < table->Size; ++i){
+		p = table->mytable[i];
 		while (p != NULL){
 			temp = p->next;
-			if (p->input != NULL) free(p->input);
+			if (p->input != NULL)
+				free(p->input);
 			free(p);
 			p = temp;
 		}
-		table[i]->next = NULL;
+		table->mytable[i] = NULL;
 	}
+	table->NumberOfElements = 0;
 }
-void DeleteTable(struct node** table, int tsize){
-	int i;
-	struct node *p, *temp;
-	for (i = 0; i < tsize; ++i){
-		p = table[i]->next;
-		while (p != NULL){
-			temp = p->next;
-			if (p->input != NULL) free(p->input);
-			free(p);
-			p = temp;
-		}
-		free(table[i]);
-	}
+void DeleteTable(struct table* table){
+	ClearTable(table);
+	free(table->mytable);
 	free(table);
+	table = NULL;
 }

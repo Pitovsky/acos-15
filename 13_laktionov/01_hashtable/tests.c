@@ -32,30 +32,26 @@ int main() {
         scanf("%s", key);
         if (strcmp(key, "EXIT")==0)
             break;
-        hashTable = delete(key, hashTable);
+        delete(key, hashTable);
     }
     
     printf("Here is hash table after deletion: \n--------------\n");
     outTable(hashTable);
     printf("--------------\n");
     
-    printf("Let's clear it\n");
-    hashTable = clearTable(hashTable);
+    clearTable(hashTable);
     
-    printf("Here is the hash table after clearing (must be empty): \n--------------\n");
-    outTable(hashTable);
-    printf("--------------\n");
-    
+    hashTable = createTable(k);
     for (int i = 0; i < k*10; ++i){
         key = i%2?"a":"b";
-        hashTable = insert(key, hashTable);
+        hashTable = insert(key, NULL, hashTable);
     }
     
     printf("Here is hash table after attack: \n--------------\n");
     outTable(hashTable);
     printf("--------------\n");
     
-    hashTable = clearTable(hashTable);
+    clearTable(hashTable);
     
     return 0;
 }
