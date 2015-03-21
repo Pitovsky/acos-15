@@ -4,7 +4,7 @@
 struct List
 {
 	struct List* next;
-	int value;
+	void* value;
 	char* key;
 };
 struct Table
@@ -18,7 +18,8 @@ int hash(char* word, int size)
 {
 		int i = 0;
 		int sum = 0;
-		for (i = 0; i < strlen(word); ++i)
+		int len = strlen(word);
+		for (i = 0; i < len; ++i)
 			sum = sum + (int)word[i];
 		return sum%size;
 }
@@ -41,13 +42,14 @@ void clearTable(struct Table *p)
             while (nextPage != NULL)
             {
                 free(nextPage->key);
+                free(nextPage->value);
                 nextPage = nextPage->next;
             }
             free(p->korts[i]);
         }
     free(p->korts);
 }
-void outTable(struct Table *p)
+void outTable(struct Table *p, FILE* fout)
 {
     int i = 0;
     struct List* nextPage = NULL;
@@ -59,7 +61,7 @@ void outTable(struct Table *p)
             nextPage = p->korts[i];
             while (nextPage != NULL)
             {
-                printf(" -> [%s|%d]", nextPage->key, nextPage->value);
+                fprintf(fout, " -> [%s|%d]", nextPage->key, *((int*)(nextPage->value)));
                 nextPage = nextPage->next;
             }
         }
@@ -67,17 +69,18 @@ void outTable(struct Table *p)
     }
 }
 
-struct Table *writeElement(struct Table *p, char *key, int value)
+struct Table *writeElement(struct Table *p, char *key, void* value)
 {
     char *newKey = (char*)malloc(strlen(key)*sizeof(char));
     int i = 0;
-    for (i = 0; i < strlen(key); ++i)
-        newKey[i] = key[i];
+    strcpy(newKey, key);
 	if (p->korts[hash(key, p->size)] == NULL)
 	{
         p->korts[hash(key, p->size)] = (struct List*)malloc(sizeof(struct List));
         p->korts[hash(key, p->size)]->next = NULL;
-        p->korts[hash(key, p->size)]->value = value;
+        void* newv = (void*)malloc(sizeof(*value));
+        memcpy(newv, value, sizeof(*value));
+        p->korts[hash(key, p->size)]->value = newv;
         p->korts[hash(key, p->size)]->key = newKey;
 	}
 	else
@@ -87,7 +90,9 @@ struct Table *writeElement(struct Table *p, char *key, int value)
             nextPage = nextPage->next;
         nextPage->next = (struct List*)malloc(sizeof(struct List));
         nextPage->next->next = NULL;
-        nextPage->next->value = value;
+        void* newv = (void*)malloc(sizeof(*value));
+        memcpy(newv, value, sizeof(*value));
+        nextPage->next->value = newv;
         nextPage->next->key = newKey;
     }
     ++p->realSize;
@@ -124,6 +129,7 @@ void deleteElement(struct Table *p, char *key)
     {
         struct List *afterDelPage = nextPage->next;
         free(nextPage->key);
+        free(nextPage->value);
         p->korts[hash(key, p->size)] = afterDelPage;
         return;
     }
@@ -133,10 +139,11 @@ void deleteElement(struct Table *p, char *key)
         return;
 	struct List *afterDelPage = nextPage->next->next;
 	free(nextPage->next->key);
+	free(nextPage->next->value);
 	free(nextPage->next);
 	nextPage->next = afterDelPage;
 }
-int readElement(struct Table *p, char *key, int *dst)
+int readElement(struct Table *p, char *key, void** dst)
 {
 	struct List *nextPage = p->korts[hash(key, p->size)];
 	while (nextPage != NULL && strcmp(nextPage->key, key) != 0)
