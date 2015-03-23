@@ -3,7 +3,7 @@ all: main
 
 main:main.c
 	clang main.c -o main -std=c11 -Weverything \
-		-Wno-missing-prototypes -Wno-dollar-in-identifier-extension -Wno-unused-macros -D_DEFAULT_SOURCE -g
+		-Wno-missing-prototypes -Wno-dollar-in-identifier-extension -Wno-unused-macros -D_DEFAULT_SOURCE
 
 clean:
 	rm -f main
