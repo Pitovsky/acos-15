@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 
 #define PAGESIZE 1024
 
@@ -81,13 +82,14 @@ int getNeisMem(struct memPart* ptr, struct memPart** realPrev, struct memPart** 
     *realPrev = root;
     *realNext = root;
 
-    while (*realPrev != NULL && (void*)(*realPrev) + (*realPrev)->size + sizeof(struct memPart) != (void*)ptr)
+    while (*realPrev != NULL && (void*)(*realPrev) + ((*realPrev)->size) + sizeof(struct memPart) != ptr)
         *realPrev = (*realPrev)->next;
-    while (*realNext != NULL && (void*)(*realNext) != (void*)ptr + sizeof(struct memPart) + ptr->size)
+    while (*realNext != NULL && (void*)(*realNext) != (void*)ptr + sizeof(struct memPart) + (ptr->size))
         *realNext = (*realNext)->next;
 
     return 0;
 }
+
 int myFree(void* ptr)
 {
     struct memPart* delPart = (struct memPart*)(ptr - sizeof(struct memPart));
@@ -104,15 +106,18 @@ int myFree(void* ptr)
 
     if (delPrev != NULL && delPrev->free == 0) //merge with previous
     {
-        delPrev->size = delPrev->size + delPart->size + sizeof(struct memPart);
+        delPrev->size = delPrev->size + (delPart->size) + sizeof(struct memPart);
+        //printf("merge left\n");
         if (delPart->prev != NULL)
             delPart->prev->next = delPart->next;
         if (delPart->next != NULL)
             delPart->next->prev = delPart->prev;
+        delPart = delPrev;
     }
     if (delNext != NULL && delNext->free == 0) //merge with next
     {
-        delPart->size = delPart->size + delNext->size + sizeof(struct memPart);
+        delPart->size = delPart->size + (delNext->size) + sizeof(struct memPart);
+        //printf("merge right\n");
         if (delNext->prev != NULL)
             delNext->prev->next = delNext->next;
         if (delNext->next != NULL)
@@ -121,19 +126,72 @@ int myFree(void* ptr)
     return 0;
 }
 
+void getStat(void* ptr)
+{
+        int freeBytes = 0;
+        int useBytes = 0;
+        int allBytes = 0;
+        int partCount = 0;
+        struct memPart* nowPart = (struct memPart*)((void*)ptr - sizeof(struct memPart));
+        while (nowPart->prev != NULL)
+                nowPart = nowPart->prev;
+        while (nowPart != NULL)
+        {
+                if (nowPart->free == 0)
+                    printf("+free: ");
+                else
+                    printf("-used: ");
+                printf("%d bytes\t(%d w/o struct)\n", nowPart->size + sizeof(struct memPart), nowPart->size);
+                if (nowPart->free == 0)
+                    freeBytes = freeBytes + nowPart->size;
+                else
+                    useBytes = useBytes + nowPart->size;
+                useBytes = useBytes + sizeof(struct memPart);
+                allBytes = allBytes + nowPart->size + sizeof(struct memPart);
+                partCount++;
+                nowPart = nowPart->next;
+        }
+        printf("%d parts:\n%d free\t%d use\nall: %d bytes.\n", partCount, freeBytes, useBytes, allBytes);
+}
+
+
+
 int main(int argc, char** argv)
 {
-    int size = 0;
-    scanf("%d", &size);
-    while (size != -1)
+    char* com = (char*)myMalloc(10*sizeof(char));
+    int i = 0;
+    for (i = 0; i < 10; ++i)
+        com[i] = 0;
+    int n = 0;
+    scanf("%d", &n);
+    char** str = (char**)myMalloc(n*sizeof(char*));
+    for (i = 0; i < n; ++i)
     {
-        char* str = (char*)myMalloc(size*sizeof(char));
-        printf("Memory OK.\n");
-        int i = 0;
-        for (i = 0; i < size; ++i)
-            str[i] = i%10 + 'a';
-        str[size - 1] = 0;
-        scanf("%d", &size);
+        int j = 0;
+        printf("%d: ", i);
+        char* newStr = (char*)myMalloc(255*sizeof(char));
+        scanf("%s", newStr);
+        str[i] = (char*)myMalloc(strlen(newStr)*sizeof(char));
+        for (j = 0; j < strlen(newStr); ++j)
+            str[i][j] = newStr[j];
+        str[i][strlen(newStr) - 1] = 0;
+        myFree(newStr);
+        //printf("Memory OK.\n");
+    }
+    while (strcmp(com, "end") != 0)
+    {
+        printf("new command: ");
+        scanf("%s", com);
+        if (strcmp(com, "free") == 0)
+        {
+            scanf("%d", &i);
+            myFree(str[i]);
+            printf("Memory freed.\n");
+        }
+        if (strcmp(com, "stat") == 0) //only for statistic
+        {
+            getStat(str);
+        }
     }
 
     //printf("%s\n", str);
