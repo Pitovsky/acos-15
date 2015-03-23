@@ -66,6 +66,7 @@ void killHashTable(HashTable_t* table)
     free(table);
 }
 
+
 void insertToHashTable(HashTable_t* table, const char* key, void* value)
 {
     Hash_t hash = hashString(key) % table->size;
@@ -78,6 +79,33 @@ void insertToHashTable(HashTable_t* table, const char* key, void* value)
     table->bins[hash] = newNode;
 
     table->nKeys++;
+
+    if (table->nKeys >= 2 * table->size)
+    {
+        List_t** oldData = table->bins;
+        size_t nKeys = table->nKeys;
+
+        table->size <<= 1;
+        table->bins = malloc(sizeof(List_t**) * table->size);
+        memset(table->bins, 0, sizeof(List_t**) * table->size);
+        table->nKeys = 0;
+
+        List_t** currList = oldData;
+        while (nKeys)
+        {
+            if (*currList)
+            {
+                for (List_t* currElement = *currList; currElement; currElement = currElement->next)
+                {
+                    nKeys--;
+                    insertToHashTable(table, currElement->key, currElement->data);
+                }
+                killList(*currList);
+            }
+            currList++;
+        }
+        free(oldData);
+    }
 }
 
 void* findInHashTable(HashTable_t* table, const char* key)
@@ -98,6 +126,7 @@ void eraseFromHashTable(HashTable_t* table, const char* key)
         table->bins[hash] = table->bins[hash]->next;
         free(p->key);
         free(p);
+        table->nKeys--;
         return;
     }
 
@@ -110,15 +139,17 @@ void eraseFromHashTable(HashTable_t* table, const char* key)
             prev->next = curr->next;
             free(curr->key);
             free(curr);
-            break;
+            table->nKeys--;
+            return;
         }
-    }}
+    }
+}
 
 #define v(x) ((void*)(size_t)(x))
 
 int main()
 {
-    HashTable_t* table = createHashTable(2000000);
+    HashTable_t* table = createHashTable(1);
 
     insertToHashTable(table, "Stepan", v(15));
     eraseFromHashTable(table, "Stepan");
@@ -130,8 +161,9 @@ int main()
     {
         char string[10] = "";
         for (int k = 0; k < 9; k++)
-            string[k] = (char)(rand() & 0xff);
-        insertToHashTable(table, string, v(i + 42));
+            string[k] = (char)(rand() % 254 + 1);
+        if (!findInHashTable(table, string))
+           insertToHashTable(table, string, v(i + 42));
     }
 
     srand(2);
@@ -139,10 +171,14 @@ int main()
     {
         char string[10] = "";
         for (int k = 0; k < 9; k++)
-            string[k] = (char)(rand() & 0xff);
-        printf("%i\n", (int)(findInHashTable(table, string) == v(i + 42)));
-        eraseFromHashTable(table, string);
+            string[k] = (char)(rand() % 254 + 1);
+        void* searchResult = findInHashTable(table, string);
+        assert(0 == searchResult || v(i + 42) == searchResult);
+        if (v(i + 42) == searchResult)
+            eraseFromHashTable(table, string);
     }
+
+    assert(0 == table->nKeys);
 
     killHashTable(table);
 }
