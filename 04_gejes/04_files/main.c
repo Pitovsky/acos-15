@@ -24,7 +24,7 @@ int outWordDir(char* path, int recDeep)
         if (strcmp(namelist[i]->d_name, "..") != 0 && strcmp(namelist[i]->d_name, ".") !=0)
     {
         int wordCount = 0;
-        if (recDeep > 0 && chdir(namelist[i]->d_name) == 0)
+        if (recDeep != 0 && chdir(namelist[i]->d_name) == 0)
         {
             getcwd(path, sizeof(path));
             outWordDir(path, recDeep - 1);
@@ -42,7 +42,7 @@ int outWordDir(char* path, int recDeep)
             while (fscanf(fin, "%s", word) == 1)
                 wordCount++;
             fclose(fin);
-            printf("%s:\t%d (recourse else: %d levels)\n", namelist[i]->d_name, wordCount, recDeep);
+            printf("%s:\t%d (recoursion else: %d levels)\n", namelist[i]->d_name, wordCount, recDeep);
         }
     }
     return 0;
@@ -61,10 +61,10 @@ int main(int argc, char** argv)
 
     for (i = 0; i < argc - 1; ++i)
         if (strcmp(argv[i], "-r") == 0)
-            recDeep = strToInt(argv[i + 1]);
+            recDeep = strToInt(argv[i + 1]) - 1;
 
     chdir(path);
-    printf("Ok, I will try it. %d recoursive levels?\n", recDeep);
+    printf("Ok, I will try it. %d recoursion levels?\n", recDeep);
     outWordDir(path, recDeep);
 
     return 0;
