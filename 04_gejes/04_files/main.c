@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include <unistd.h>
+#include <stdlib.h>
 #include <dirent.h>
 #include <string.h>
 
@@ -13,15 +13,18 @@ int strToInt(char* str)
     }
     return ret;
 }
+
+struct dirent** namelist;
+
 int outWordDir(char* path, int recDeep)
 {
     int i = 0;
-    char word[1023];
-    struct dirent** namelist;
+
     int inDirCount = scandir(".", &namelist, NULL, alphasort);
+    getcwd(path, sizeof(path));
     printf("Now in directory: %s, else %d levels\n", path, recDeep);
     for (i = 0; i < inDirCount; ++i)
-        if (strcmp(namelist[i]->d_name, "..") != 0 && strcmp(namelist[i]->d_name, ".") !=0)
+        if (strcmp(namelist[i]->d_name, "..") != 0 && strcmp(namelist[i]->d_name, ".") != 0)
     {
         int wordCount = 0;
         if (recDeep > 0 && chdir(namelist[i]->d_name) == 0)
@@ -30,10 +33,7 @@ int outWordDir(char* path, int recDeep)
             outWordDir(path, recDeep - 1);
             chdir("..");
             getcwd(path, sizeof(path));
-        }
-        else if (recDeep <= 0)
-        {
-            printf("%s/%s:\tit's a dir (but recourse ended)\n", path, namelist[i]->d_name);
+            printf("Done.\n");
         }
         else
         {
@@ -43,12 +43,18 @@ int outWordDir(char* path, int recDeep)
                 fprintf(stderr, "Error open this file: %s\n", namelist[i]->d_name);
                 continue;
             }
+            char word[150];
+
             while (fscanf(fin, "%s", word) == 1)
                 wordCount++;
+            //free(word);
             fclose(fin);
-            printf("%s/%s:\t%d (recourse else: %d levels)\n", path, namelist[i]->d_name, wordCount, recDeep);
+            printf("\t%s:\t%d (recourse else: %d levels)\n", namelist[i]->d_name, wordCount, recDeep);
         }
     }
+    //free(word);
+    printf("Directory done.\n");
+    return 0;
 }
 
 int main(int argc, char** argv)
@@ -68,48 +74,8 @@ int main(int argc, char** argv)
 
     chdir(path);
     printf("Ok, I will try it. %d recoursive levels?\n", recDeep);
+    getcwd(path, sizeof(path));
     outWordDir(path, recDeep);
-    /*struct dirent** namelist;
-    int inDirCount = scandir(path, &namelist, NULL, alphasort);
-    chdir(path);
-    printf("I see %d files in directory %s:\n", inDirCount, path);
-    for (i = 0; i < inDirCount; ++i)
-        if (strcmp(namelist[i]->d_name, "..") != 0 && strcmp(namelist[i]->d_name, ".") !=0)
-    {
-        int wordCount = 0;
-        if (recDeep > 0 && chdir(namelist[i]->d_name) == 0)
-        {
-            pid_t recProc = fork();
-            if (recProc == 0)
-            {
-                char* oldpath = "../";
-                strcat(oldpath, argv[0]);
-                printf("Now launch: %s\n", oldpath);
-                int rec = execl(oldpath, oldpath, "-r", recDeep - 1, "-f", path);
-                if (rec != 0)
-                    fprintf(stderr, "Error: cannot open this dir: %s (returned %d)\n", namelist[i]->d_name, rec);
-                return rec;
-            }
-            else
-            {
-                wait(recProc);
-                chdir("..");
-            }
-        }
-        else
-        {
-            FILE* fin = fopen(namelist[i]->d_name, "r");
-            if (fin == NULL)
-            {
-                fprintf(stderr, "Error open this file: %s\n", namelist[i]->d_name);
-                continue;
-            }
-            while (fscanf(fin, "%s", word) == 1)
-                wordCount++;
-            fclose(fin);
-            printf("%s/%s:\t%d (recourse else: %d levels)\n", path, namelist[i]->d_name, wordCount, recDeep);
-        }
-    }*/
 
     return 0;
 }
