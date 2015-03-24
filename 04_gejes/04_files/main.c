@@ -16,7 +16,7 @@ int strToInt(char* str)
 int outWordDir(char* path, int recDeep)
 {
     int i = 0;
-    char word[1023];
+    char word[262143];
     struct dirent** namelist;
     int inDirCount = scandir(".", &namelist, NULL, alphasort);
     printf("Now in directory: %s, else %d levels\n", path, recDeep);
@@ -31,10 +31,6 @@ int outWordDir(char* path, int recDeep)
             chdir("..");
             getcwd(path, sizeof(path));
         }
-        else if (recDeep <= 0)
-        {
-            printf("%s/%s:\tit's a dir (but recourse ended)\n", path, namelist[i]->d_name);
-        }
         else
         {
             FILE* fin = fopen(namelist[i]->d_name, "r");
@@ -46,7 +42,7 @@ int outWordDir(char* path, int recDeep)
             while (fscanf(fin, "%s", word) == 1)
                 wordCount++;
             fclose(fin);
-            printf("%s/%s:\t%d (recourse else: %d levels)\n", path, namelist[i]->d_name, wordCount, recDeep);
+            printf("%s:\t%d (recourse else: %d levels)\n", namelist[i]->d_name, wordCount, recDeep);
         }
     }
     return 0;
