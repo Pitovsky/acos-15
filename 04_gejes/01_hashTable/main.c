@@ -2,43 +2,63 @@
 #include <stdlib.h>
 #include <string.h>
 
-int main()
+int main(int argc, char** argv)
 {
-	struct Table *ptr;
-	int n = 0;
-	int v = 0;
-	scanf("%d", &n);
-	ptr = createTable(n);
-	char com[3];
-	char keys[10];
-	while (strcmp(com, "end") != 0)
-	{
-        scanf("%s", com);
+    int i = 0;
+    FILE* fin = stdin;
+    FILE* fout = stdout;
+    for (i = 0; i < argc - 1; ++i)
+        if (strcmp(argv[i], "-i") == 0)
+        {
+            fin = fopen(argv[i + 1], "r");
+            if (fin == NULL)
+            {
+                fprintf(stderr, "Error: cannot open this file: %s\n", argv[i + 1]);
+                return 1;
+            }
+        }
+    for (i = 0; i < argc - 1; ++i)
+        if (strcmp(argv[i], "-o") == 0)
+        {
+            fout = fopen(argv[i + 1], "w");
+        }
+        struct Table *ptr;
+        int n = 0;
+        fscanf(fin, "%d", &n);
+        ptr = createTable(n);
+        char com[3];
+        char keys[10];
+        while (strcmp(com, "end") != 0)
+        {
+        fscanf(fin, "%s", com);
         if (strcmp(com, "add") == 0)
         {
-            scanf("%s", keys);
-            scanf("%d", &v);
-            ptr = writeElement(ptr, keys, v);
+            fscanf(fin, "%s", keys);
+            int v = 0;
+            fscanf(fin, "%d", &v);
+            ptr = writeElement(ptr, keys, &v);
         }
         else if (strcmp(com, "get") == 0)
         {
-            scanf("%s", keys);
+            fscanf(fin, "%s", keys);
+            int *v;
             if (readElement(ptr, keys, &v))
-                printf("out: %s <=> %d\n", keys, v);
+                fprintf(fout, "out: %s <=> %d\n", keys, *v);
             else
-                printf("I haven't it\n");
+                fprintf(fout, "I haven't it\n");
         }
         else if (strcmp(com, "pop") == 0)
         {
-            scanf("%s", keys);
+            fscanf(fin, "%s", keys);
             deleteElement(ptr, keys);
-            printf("Ok.\n");
+            fprintf(fout, "Ok.\n");
         }
         else if (strcmp(com, "out") == 0)
-            outTable(ptr);
-	}
+            outTable(ptr, fout);
+        }
+    fclose(fin);
+    fclose(fout);
+        clearTable(ptr);
 
-	clearTable(ptr);
-
-	return 0;
+        return 0;
 }

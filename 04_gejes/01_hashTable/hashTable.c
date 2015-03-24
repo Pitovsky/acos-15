@@ -3,33 +3,34 @@
 
 struct List
 {
-	struct List* next;
-	int value;
-	char* key;
+        struct List* next;
+        void* value;
+        char* key;
 };
 struct Table
 {
-	size_t size;
-	struct List **korts;
+        size_t size;
+        struct List **korts;
     size_t realSize;
 };
 
 int hash(char* word, int size)
 {
-		int i = 0;
-		int sum = 0;
-		for (i = 0; i < strlen(word); ++i)
-			sum = sum + (int)word[i];
-		return sum%size;
+                int i = 0;
+                int sum = 0;
+                int len = strlen(word);
+                for (i = 0; i < len; ++i)
+                        sum = sum + (int)word[i];
+                return sum%size;
 }
 
 struct Table* createTable(int newSize)
 {
-	struct Table* newTable = (struct Table*)malloc(sizeof(struct Table));
-	newTable->size = newSize;
-	newTable->realSize = 0;
-	newTable->korts = (struct List**)malloc(newSize*sizeof(struct List*));
-	return newTable;
+        struct Table* newTable = (struct Table*)malloc(sizeof(struct Table));
+        newTable->size = newSize;
+        newTable->realSize = 0;
+        newTable->korts = (struct List**)malloc(newSize*sizeof(struct List*));
+        return newTable;
 }
 void clearTable(struct Table *p)
 {
@@ -41,13 +42,14 @@ void clearTable(struct Table *p)
             while (nextPage != NULL)
             {
                 free(nextPage->key);
+                free(nextPage->value);
                 nextPage = nextPage->next;
             }
             free(p->korts[i]);
         }
     free(p->korts);
 }
-void outTable(struct Table *p)
+void outTable(struct Table *p, FILE* fout)
 {
     int i = 0;
     struct List* nextPage = NULL;
@@ -59,7 +61,7 @@ void outTable(struct Table *p)
             nextPage = p->korts[i];
             while (nextPage != NULL)
             {
-                printf(" -> [%s|%d]", nextPage->key, nextPage->value);
+                fprintf(fout, " -> [%s|%d]", nextPage->key, *((int*)(nextPage->value)));
                 nextPage = nextPage->next;
             }
         }
@@ -67,27 +69,30 @@ void outTable(struct Table *p)
     }
 }
 
-struct Table *writeElement(struct Table *p, char *key, int value)
+struct Table *writeElement(struct Table *p, char *key, void* value)
 {
     char *newKey = (char*)malloc(strlen(key)*sizeof(char));
     int i = 0;
-    for (i = 0; i < strlen(key); ++i)
-        newKey[i] = key[i];
-	if (p->korts[hash(key, p->size)] == NULL)
-	{
+    strcpy(newKey, key);
+        if (p->korts[hash(key, p->size)] == NULL)
+        {
         p->korts[hash(key, p->size)] = (struct List*)malloc(sizeof(struct List));
         p->korts[hash(key, p->size)]->next = NULL;
-        p->korts[hash(key, p->size)]->value = value;
+        void* newv = (void*)malloc(sizeof(*value));
+        memcpy(newv, value, sizeof(*value));
+        p->korts[hash(key, p->size)]->value = newv;
         p->korts[hash(key, p->size)]->key = newKey;
-	}
-	else
-	{
+        }
+        else
+        {
         struct List *nextPage = p->korts[hash(key, p->size)];
         while (nextPage->next != NULL)
             nextPage = nextPage->next;
         nextPage->next = (struct List*)malloc(sizeof(struct List));
         nextPage->next->next = NULL;
-        nextPage->next->value = value;
+        void* newv = (void*)malloc(sizeof(*value));
+        memcpy(newv, value, sizeof(*value));
+        nextPage->next->value = newv;
         nextPage->next->key = newKey;
     }
     ++p->realSize;
@@ -111,38 +116,40 @@ struct Table *writeElement(struct Table *p, char *key, int value)
 }
 void deleteElement(struct Table *p, char *key)
 {
-	struct List *nextPage = p->korts[hash(key, p->size)];
-	if (p->korts[hash(key, p->size)] == NULL)
+        struct List *nextPage = p->korts[hash(key, p->size)];
+        if (p->korts[hash(key, p->size)] == NULL)
         return;
-	if (p->korts[hash(key, p->size)]->next == NULL)
-	{
-		free(p->korts[hash(key, p->size)]);
-		p->korts[hash(key, p->size)] = NULL;
-		return;
-	}
-	if (strcmp(nextPage->key, key) == 0)
+        if (p->korts[hash(key, p->size)]->next == NULL)
+        {
+                free(p->korts[hash(key, p->size)]);
+                p->korts[hash(key, p->size)] = NULL;
+                return;
+        }
+        if (strcmp(nextPage->key, key) == 0)
     {
         struct List *afterDelPage = nextPage->next;
         free(nextPage->key);
+        free(nextPage->value);
         p->korts[hash(key, p->size)] = afterDelPage;
         return;
     }
-	while (nextPage->next != NULL && strcmp(nextPage->next->key, key) != 0)
-		nextPage = nextPage->next;
+        while (nextPage->next != NULL && strcmp(nextPage->next->key, key) != 0)
+                nextPage = nextPage->next;
     if (nextPage->next == NULL)
         return;
-	struct List *afterDelPage = nextPage->next->next;
-	free(nextPage->next->key);
-	free(nextPage->next);
-	nextPage->next = afterDelPage;
+        struct List *afterDelPage = nextPage->next->next;
+        free(nextPage->next->key);
+        free(nextPage->next->value);
+        free(nextPage->next);
+        nextPage->next = afterDelPage;
 }
-int readElement(struct Table *p, char *key, int *dst)
+int readElement(struct Table *p, char *key, void** dst)
 {
-	struct List *nextPage = p->korts[hash(key, p->size)];
-	while (nextPage != NULL && strcmp(nextPage->key, key) != 0)
-		nextPage = nextPage->next;
-	if (nextPage == NULL)
-		return 0;
-	*dst = nextPage->value;
-	return 1;
+        struct List *nextPage = p->korts[hash(key, p->size)];
+        while (nextPage != NULL && strcmp(nextPage->key, key) != 0)
+                nextPage = nextPage->next;
+        if (nextPage == NULL)
+                return 0;
+        *dst = nextPage->value;
+        return 1;
 }
