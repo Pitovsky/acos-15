@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <sys/types.h>
+#include <stdlib.h>
 #include <fcntl.h>
 #include <dirent.h>
 #include <stdio.h>
@@ -64,11 +65,27 @@ void processDir(const char *name, NSInteger currentLevel, NSInteger level, short
             printf("%*s[%s]\n", currentLevel*2, "", entry->d_name);
             processDir(path, currentLevel + 1, level, sFlag, symbolOnce);
         }
+        else if (entry->d_type == DT_LNK && (sFlag || symbolOnce))
+        {
+            if (symbolOnce)
+            {
+                static short int once = 0;
+                if (!once)
+                {
+                    processDir(realpath(path, NULL), currentLevel + 1, level, sFlag, symbolOnce);
+                    once = 1;
+                }
+            }
+            else
+            {
+                processDir(realpath(path, NULL), currentLevel + 1, level, sFlag, symbolOnce);
+            }
+        }
         else
         {
             readFile(path, currentLevel);
         }
-    } while (entry = readdir(dir));
+    } while ((entry = readdir(dir)));
         closedir(dir);
 }
 
