@@ -1,5 +1,5 @@
 #include <stdio.h>
-
+//ilnurkh: решения то нет
 unsigned short int * convert(unsigned int* x)
 {
    return (unsigned short int *) x;
