@@ -27,7 +27,7 @@ int words(FILE* in)
 
 void run(char* dir, int depth, int limit)
 {
-	printf("run started OK\n");
+	printf("RUN DEPTH=%d STARTED OK\n", depth);
 	printf("dir : %s\n", dir);
 	if (depth > limit)
 	{
@@ -39,34 +39,32 @@ void run(char* dir, int depth, int limit)
 	
 	DIR *CurrDir = opendir(dir);
 	//Рекурсивно опуститься если директория
-	struct dirent element;
-	struct dirent *elementptr;//было ли выполнено открытие объекта
+	//struct dirent element;
+	struct dirent *element;//было ли выполнено открытие объекта
 	
-	readdir_r(CurrDir, &element, &elementptr); //Если имя . или .., то пропустить .d_name
+	element = readdir(CurrDir); //Если имя . или .., то пропустить .d_name
 	
-	while(elementptr != NULL)	//Если объект есть, то есть считался
-	{              
-		printf("elementptr != NULL\n"); 
-		printf("Element name: %s\n", element.d_name);   
-		if (strcmp(element.d_name, ".") == 0)
+	while(element != NULL)	//Если объект есть, то есть считался
+	{                 
+		if (strcmp(element->d_name, ".") == 0)
 		{
-			printf("comparation is OK by '.'\n");
-			readdir_r(CurrDir, &element, &elementptr);
+			element = readdir(CurrDir);
 			continue;
 		}
-		if (strcmp(element.d_name, "..") == 0)
+		if (strcmp(element->d_name, "..") == 0)
 		{
-			printf("comparation is OK by '..'\n");
-			readdir_r(CurrDir, &element, &elementptr);
+			element = readdir(CurrDir);
 			continue;
 		}		
+		
+		printf("Element name: %s\n", element->d_name);
 		
 	
 //Склеивание полного пути к файлу
 		char filepath[MAX_PATH];
 		strcpy(filepath, dir);
 		strcat(filepath, "/");
-		strcat(filepath, element.d_name);
+		strcat(filepath, element->d_name);
 //Склеивание
 		
 //Информацию об element dirent запишем в fileinfo
@@ -80,7 +78,7 @@ void run(char* dir, int depth, int limit)
 			if(S_ISREG(fileinfo.st_mode)) //Если обычный файл
 			{
 				//Посчитать слова
-				printf("Filepath: %s; FUNCTION WORDS started: \n", filepath);
+				printf("Filepath: %s;\nFUNCTION WORDS started: \n", filepath);
 				FILE *in = fopen(filepath, "r"); 
 				words(in);
 				printf("FUCTION WORDS finished.\n");
@@ -88,6 +86,7 @@ void run(char* dir, int depth, int limit)
 			if(S_ISDIR(fileinfo.st_mode)) //Если директория
 			{
 				run(filepath, depth+1, limit);
+				printf("dir %s checked.\n", dir);
 				//Рекурсивно опуститься ниже
 			}
 			
@@ -96,7 +95,7 @@ void run(char* dir, int depth, int limit)
 				
 			}
 		}
-		readdir_r(CurrDir, &element, &elementptr);
+		element = readdir(CurrDir);
 	}
 	
 	
@@ -121,7 +120,7 @@ int main(int argc, char**argv)
 		printf("Wrong input.\n");
 		return 1;
 	}
-	run(argv[1], 1, 1);
+	run(argv[1], 1, 10);
 
 return 0;
 }
