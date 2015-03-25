@@ -26,7 +26,7 @@ struct Table {
 
 struct Table* CreateTable(int size);
 int Hash(char* key, int size);
-void insertToTable(struct Table* DatTable, struct Data DatData);
+struct Table* insertToTable(struct Table* DatTable, struct Data DatData);
 unsigned short Contains(struct Table* DatTable, struct Data* DatData);
 void PrintList(struct listNode* dat);
 struct listNode* Search(struct Table* DatTable, struct Data* DatData);

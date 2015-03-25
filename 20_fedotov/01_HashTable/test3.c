@@ -1,4 +1,12 @@
 //
+//  test2.cpp
+//  ACOS_HashTable
+//
+//  Created by Simon Fedotov on 16.03.15.
+//  Copyright (c) 2015 Simon23Rus. All rights reserved.
+//
+
+//
 //  testfile.c
 //  ACOS_HashTable
 //
@@ -59,16 +67,16 @@ int main() {
     FirstData = 0;
     FirstKey = (char*) malloc(255 * sizeof(char));
     while(strcmp(FirstKey, "/////")) {
-    fscanf(ToInput, "%s%d", FirstKey, &FirstData);
+        fscanf(ToInput, "%s%d", FirstKey, &FirstData);
         if(!strcmp(FirstKey, "/////"))
             break;
-    NewData -> data = FirstData;
-    NewData -> key = FirstKey;
+        NewData -> data = FirstData;
+        NewData -> key = FirstKey;
         if(Contains(MyTable, NewData)) {
             fprintf(myOut, "%s\n", "YES");
         }
         else {
-                fprintf(myOut, "%s\n", "NO");
+            fprintf(myOut, "%s\n", "NO");
         }
     }
     fclose(myFile);

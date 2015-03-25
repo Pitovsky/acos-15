@@ -33,12 +33,12 @@ int Hash(char* key, int size) {
     return result % size;
 }
 
-void insertToTable(struct Table* DatTable, struct Data DatData) {
+struct Table* insertToTable(struct Table* DatTable, struct Data DatData) {
     ++(DatTable -> NumberOfElements);
     struct listNode* CheckList = NULL;
     if(CheckList != NULL) {
         CheckList -> OurData = DatData;
-        return;
+        return DatTable;
     }
     if(DatTable -> OurTable[Hash(DatData . key, DatTable -> size)] == NULL) {
         struct listNode* NewElement = (struct listNode*)malloc(sizeof(struct listNode));
@@ -53,6 +53,13 @@ void insertToTable(struct Table* DatTable, struct Data DatData) {
         NewElement -> nextNode = DatTable -> OurTable[Hash(DatData . key, DatTable -> size)];
         DatTable -> OurTable[Hash(DatData . key, DatTable -> size)] = NewElement;
     }
+    if(DatTable -> NumberOfElements >= (4.0 * DatTable -> size) / 3.0) {
+        struct Table* DatTableNew = CreateTable((DatTable -> size )* 2);
+        DatTableNew = MoveToTable(DatTable, DatTableNew);
+        DatTable = DatTableNew;
+        return DatTable;
+    }
+    return DatTable;
 }
 
 unsigned short Contains(struct Table* DatTable, struct Data* DatData) {
@@ -116,15 +123,15 @@ unsigned short int Delete(struct Table* DatTable, struct Data* DatData) {
     }
     ParentDel = SearchPar(DatTable, DatData);
     tmp = ToDelete -> nextNode;
-    --DatTable -> NumberOfElements;
+    --(DatTable -> NumberOfElements);
     if(ParentDel == NULL) {
         DatTable -> OurTable[Hash(DatData -> key, DatTable -> size)] = ToDelete -> nextNode;
         free(ToDelete);
+        ToDelete = NULL;
         return 1;
     }
     ParentDel -> nextNode = tmp;
-    free(ToDelete);
-    
+    ToDelete = NULL;
     return 1;
 }
 
@@ -154,7 +161,7 @@ struct Table* MoveToTable(struct Table* MyFirst, struct Table* MySecond) {
             struct listNode* ToMove = (struct listNode*)malloc(sizeof(struct listNode*));
             ToMove = MyFirst -> OurTable[i];
             while (ToMove != NULL) {
-                insertToTable(MySecond, MyFirst -> OurTable[i] -> OurData);
+                insertToTable(MySecond, ToMove -> OurData);
                 ToMove = ToMove -> nextNode;
             }
             
