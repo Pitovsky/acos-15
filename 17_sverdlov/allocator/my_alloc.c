@@ -45,6 +45,7 @@ void *my_free(void *ptr)
     struct mem_buffer_t *node;
         
     cur_node = (void*)ptr - sizeof(struct mem_buffer_t);
+    assert(cur_node->is_free == 0);
     cur_node->is_free = 1;
 
     // node -- previous free buffer (or head)
@@ -149,17 +150,27 @@ void* my_malloc(size_t size)
     } 
     assert(node > 0);
     last_available_space = max(last_available_space, node + size);
-    return node + sizeof(struct mem_buffer_t);
+    return (void*)node + sizeof(struct mem_buffer_t);
 }
 
 int main() 
 {
     int* A = my_malloc(5000000 * sizeof(int));
-    printf("was adress: %d\n", (int)A);
     my_free(A);
+    printf("was address: %d\n", (int)A);
 
-    /*A = my_malloc(5000 * sizeof(int));*/
-    /*printf("what will be adress this time?: %d\n", (int)A);*/
+    A = my_malloc(50000 * sizeof(int));
+    printf("what will be adress this time?: %d\n", (int)A);
+
+    int* B = my_malloc(54321 * sizeof(int));
+    int i;
+    for (i = 0; i < 50; ++i)
+        B[i] = i;
+
+    my_free(A);
+    my_free(B);
+
+    printf("seems to work");
 
 
     return 0;
