@@ -1,17 +1,19 @@
-CC=gcc
-CFLAGS=-c
-LDFLAGS=
-SOURCES=main.c hash.c
-OBJECTS=$(SOURCES:.c=.o)
-EXECUTABLE=hash
+all:hash
 
-all: $(SOURCES) $(EXECUTABLE)
+hash:main.o libht.so
+	        gcc main.o -L. -lht -o hash
+libht.so:hash.o
+	        gcc -shared hash.o  -o libht.so
 
-$(EXECUTABLE): $(OBJECTS)
-	    $(CC) $(LDFLAGS) $(OBJECTS) -o $@
+main.o:main.c
+	        gcc -std=c99 -c main.c
 
-.c.o:
-	    $(CC) $(CFLAGS) $< -o $@
+hash.o:hash.c
+	        gcc -std=c99 -fPIC -c hash.c
+
+hash.c:
+
+main.c:
 
 clean:
-	rm *.o $(EXECUTABLE)
+		rm *.o *.so hash

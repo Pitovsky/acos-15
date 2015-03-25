@@ -3,15 +3,24 @@
 
 #include "alloc.h"
 
+#define printPtr(x, y) printf("BYTES %s : %p\n", x, (y));
+
 int main()
 {
-    int *a = alloc(4);
+    void *a = alloc(4);
+    void *b = alloc(4);
+    printPtr("allocate a", a);
+    printPtr("allocate b", b);
     
-    printf("%p\n", a);
+    a = customRealloc(a, 5);
+    printPtr("realloc a", a);
+    free(b);
+    printf("Freed b\n");
     
-    a = alloc(4);
+    a = customRealloc(a, 4);
+    printPtr("a", a);
     
-    printf("%p\n", a);
+    free(a);
     
     return 0;
 }

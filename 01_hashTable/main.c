@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <fcntl.h>
+
 #include "hash.h"
 
 int main(int argc, char **argv)
@@ -6,15 +10,42 @@ int main(int argc, char **argv)
     
     Hashtable *hashtable = createHashtable(65536);
     
-    setValue(hashtable, "key1", "inky");
-    setValue(hashtable, "key2", "pinky");
-    setValue(hashtable, "key3", "blinky");
-    setValue(hashtable, "key4", "floyd");
+    FILE *fd = fopen("./input.txt", "r");
+    if (!fd)
+    {
+        perror("Can't read a file\n");
+        exit(1);
+    }
     
-    printf("%s\n", getValue(hashtable, "key1"));
-    printf("%s\n", getValue(hashtable, "key2"));
-    printf("%s\n", getValue(hashtable, "key3"));
-    printf("%s\n", getValue(hashtable, "key4"));
+    char command[2];
+    while ((fscanf(fd, "%s", command))!=EOF)
+    {
+        if (*command == 'a')
+        {
+            char value[32];
+            char key[32];
+            fscanf(fd, "%s %s", value, key);
+            setValue(hashtable, key, value);
+            
+            printf("Set value %s For key : %s\n", value, key);
+        }
+        else if (*command == 'f')
+        {
+            char key[32];
+            fscanf(fd, "%s", key);
+            printf("Got value %s For key : %s\n", getValue(hashtable, key), key);
+        }
+        else if (*command == 'r')
+        {
+            char key[32];
+            fscanf(fd, "%s", key);
+            printf("Delete value %s For key : %s\n", getValue(hashtable, key), key);
+            deleteValue(hashtable, key);
+        }
+    }
+    
+    fclose(fd);
+    releaseHashtable(hashtable);
     
     return 0;
 }

@@ -181,3 +181,22 @@ char *getValue(Hashtable *hashtable, char *key)
     else
         return NULL;
 }
+
+void releaseHashtable(Hashtable *hashtable)
+{
+    for (NSInteger i = 0; i<hashtable->size; i++)
+    {
+        Element *ptr = *(hashtable->table + i);
+        if (ptr)
+        {
+            Element *prevElement = NULL;
+            do
+            {
+                prevElement = ptr;
+                ptr = ptr->next;
+                free(prevElement);
+            } while (ptr);
+            free(ptr);
+        }
+    }
+}

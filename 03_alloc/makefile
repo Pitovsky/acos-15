@@ -1,5 +1,5 @@
 CC=gcc
-CFLAGS=-c -D LOG
+CFLAGS=-c 
 LDFLAGS=
 SOURCES=main.c alloc.c
 OBJECTS=$(SOURCES:.c=.o)

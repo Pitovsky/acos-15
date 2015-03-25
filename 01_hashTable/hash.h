@@ -22,7 +22,6 @@ struct element_s
     char *value;
     struct element_s *next;
 };
-
 typedef struct element_s Element;
 
 struct hashtable_s
@@ -30,12 +29,12 @@ struct hashtable_s
     NSUInteger size;
     struct element_s **table;
 };
-
 typedef struct hashtable_s Hashtable;
 
 Hashtable *createHashtable(NSUInteger size);
 void setValue(Hashtable *hashtable, char *key, char *value);
 char *getValue(Hashtable *hashtable, char *key);
 void deleteValue(Hashtable *hashtable, char *key);
+void releaseHashtable(Hashtable *hashtable);
 
 #endif 
