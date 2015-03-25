@@ -12,40 +12,55 @@
 
 #define MAX_PATH 256
 
+int CharInWord(char t)
+{
+	if (t == '_') return 1;
+	if (t >= 'a' && t <='z') return 1;
+	if (t >='A' && t <= 'Z') return 1;
+	return 0;
+}
+
 int words(FILE* in)
 {
-	int count = 0;
-	char word[256];
+	int count = 0, PrevInWord = 0;
+	char t;
 	while (!feof(in))
 	{
-		word[count++] = getc(in);
+		t = getc(in);
+		if(CharInWord(t))
+		{
+			PrevInWord = 1;
+			continue;
+		}
+		if (PrevInWord)			//Если символ разделитель и перед ним стоит слово
+		{
+			count++;			//Счетчик слов
+			PrevInWord = 0;		//перед следующим слово не стоит
+		}
 	}
-	printf("Function words is working\n");
-	printf("%s\n", word);
 	return count;
 }
 
-void run(char* dir, int depth, int limit)
+void run(char* dir, int depth, int limit, int CheckLinks)
 {
 	printf("RUN DEPTH=%d STARTED OK\n", depth);
 	printf("dir : %s\n", dir);
-	if (depth > limit)
+	if (limit != 0)
 	{
-		printf("depth == %d > limit == %d", depth, limit);
-		return;
+		if (depth > limit)
+		{
+			printf("Depth == %d > Limit == %d\n", depth, limit);
+			return;
+		}
 	}
-	//Здесь нужно сделать проверку на вход (не превышена ли глубина)
-	
 	
 	DIR *CurrDir = opendir(dir);
-	//Рекурсивно опуститься если директория
-	//struct dirent element;
-	struct dirent *element;//было ли выполнено открытие объекта
-	
-	element = readdir(CurrDir); //Если имя . или .., то пропустить .d_name
+	struct dirent *element;	
+	element = readdir(CurrDir); 
 	
 	while(element != NULL)	//Если объект есть, то есть считался
-	{                 
+	{           
+//Если имя . или .., то пропустить .d_name      
 		if (strcmp(element->d_name, ".") == 0)
 		{
 			element = readdir(CurrDir);
@@ -69,48 +84,33 @@ void run(char* dir, int depth, int limit)
 		
 //Информацию об element dirent запишем в fileinfo
 		struct stat fileinfo;
-		int check = stat(filepath, &fileinfo);
-		
-		
-		printf("filepath : %s\n", filepath);
+		int check = lstat(filepath, &fileinfo);
+			
 		if (check != -1)
 		{
 			if(S_ISREG(fileinfo.st_mode)) //Если обычный файл
 			{
 				//Посчитать слова
-				printf("Filepath: %s;\nFUNCTION WORDS started: \n", filepath);
 				FILE *in = fopen(filepath, "r"); 
-				words(in);
-				printf("FUCTION WORDS finished.\n");
+				printf("WORDS in motherfuckingfile %s\n------------>%d.\n", filepath, words(in));
+				fclose(in);
 			}
 			if(S_ISDIR(fileinfo.st_mode)) //Если директория
 			{
-				run(filepath, depth+1, limit);
+				run(filepath, depth+1, limit, CheckLinks); //Рекурсивно опускаемся ниже
 				printf("dir %s checked.\n", dir);
-				//Рекурсивно опуститься ниже
 			}
-			
-			if(S_ISLNK(fileinfo.st_mode)) //Если символическая ссылка
+			if(S_ISLNK(fileinfo.st_mode) && CheckLinks) //Если символьная ссылка
 			{
-				
+				int n = readlink(filepath, filepath, sizeof(filepath) - 1);
+				filepath[n] = '\0';
+				FILE* in = fopen(filepath, "r");
+				printf("WORDS in motherfuckingfile %s--->%d.\n", filepath, words(in));
+				fclose(in);
 			}
 		}
 		element = readdir(CurrDir);
 	}
-	
-	
-	
- 	// = strcat(strcpy(dir), "/", element.d_name)); //полный путь к файлу
- 	//char *p1, *p2, *p3;
- 	//filename = strcat(strcpy(dir), "/");
-	//lstat(filename, &fileinfo);
-
-	//fileinfo.st_mode; //тип файла:S_ISDIR()директория,S_SLINK()символьная ссылка или файлS_ISREG()
-	
-	//if(S_ISDIR(fileinfo.st_mode))
-	//{
-		//Рекурсивно опуститься на директорию ниже
-	//}
 }
 
 int main(int argc, char**argv)
@@ -120,7 +120,25 @@ int main(int argc, char**argv)
 		printf("Wrong input.\n");
 		return 1;
 	}
-	run(argv[1], 1, 10);
+	int i = 3, CheckLinks = 1, depth;
+	
+	while(i < argc)
+	{
+		if (!strcmp(argv[i], "-r") && i+1 < argc)
+		{
+			if (i+1 >= argc) 
+			{
+				printf("Wrong input.\n");
+				return 1;
+			}
+			depth = atoi(argv[i+1]);
+		}
+	
+		if (!strcmp(argv[i], "-s")) CheckLinks = 0;
+		i++;
+	}
+
+	run(argv[1], 1, depth, CheckLinks);
 
 return 0;
 }
