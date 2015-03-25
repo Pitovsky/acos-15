@@ -58,7 +58,7 @@ int main(int argc, char** argv)
         pid = fork();
         if (pid < 0) {
             printf("fork() FAILED\n");
-        } else if (pid) {
+        } else if (pid) {//ilnurkh: нет, это родитель
             // child
 
             // write pid
@@ -72,7 +72,7 @@ int main(int argc, char** argv)
     printf("root now waits:(\n");
 
     // only main program here (because of _exit(0) in process_file()
-    while (1) {
+    while (1) {//ilnurkh: такая сложная схема вообще не нужна
         int retval = read(msg[0], &pid, sizeof(pid));
         if (retval == EOF) {
             break;
