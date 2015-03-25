@@ -16,12 +16,12 @@ int countWords(const char* filePath)
         return -1;
 
     int answer = 0;
-    fscanf(inputFile, "%*[^QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890_]");
+    fscanf(inputFile, "%*[^a-zA-Z0-9_]");
 
     while(!feof(inputFile) && ++answer)
     {
-        fscanf(inputFile, "%*[QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890_]");
-        fscanf(inputFile, "%*[^QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm1234567890_]");
+        fscanf(inputFile, "%*[a-zA-Z0-9_]");
+        fscanf(inputFile, "%*[^a-zA-Z0-9_]");
     }
 
     fclose(inputFile);
