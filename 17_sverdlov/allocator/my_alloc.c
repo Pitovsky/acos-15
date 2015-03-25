@@ -56,6 +56,18 @@ void *my_free(void *ptr)
 
     cur_node->next = node->next; // insert cur_node to list
     node->next = cur_node;
+
+    // merge all
+    node = head->next;
+    while (node && node->next) {
+        if ((void*)node + node->size == node->next) {
+            // can merge them
+            node->size += node->next->size;
+            node->next = node->next->next;
+        }
+        node = node->next;
+    }
+
 }
 
 struct mem_buffer_t *occupy_existing_buffer(size_t size) 
