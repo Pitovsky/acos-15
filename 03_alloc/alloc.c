@@ -1,8 +1,7 @@
 #include "alloc.h"
-
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
 #include <string.h>
 
 #ifndef BLOCK_SIZE
@@ -43,16 +42,17 @@ void _createNewBlockOfData(int *nBlocks)
     block->length = BLOCK_SIZE - sizeof(Block);
     block->locked = 0;
     
+    printBlock(block);
+    
     *nBlocks += 1;
 }
 
-void *alloc(NSUInteger size)
+void *customAlloc(NSUInteger size)
 {
     if (size > BLOCK_SIZE - sizeof(Block))
     {
         perror("Can't allloc such piece fo data, define BLOCK_SIZE");
         return NULL;
-        
     }
     
     DLog("Started allocating %d bytes ptr\n", size);
@@ -85,17 +85,18 @@ void *alloc(NSUInteger size)
     }
     
     _createNewBlockOfData(&nBlocks);
-    return alloc(size);
+    return customAlloc(size);
 }
 
 void repairForward(Block *block)
 {
-    Block *nextBlock = block + sizeof(block) + block->length;
+    void *blockptr = block;
+    void *nextBlock = blockptr + sizeof(Block) + block->length;
     
-    if (!nextBlock->locked && ((char *)sbrk(0) - (char *)nextBlock) % BLOCK_SIZE != 0)
+    if (!(((Block *)nextBlock)->locked) && ((void *)sbrk(0) - (void *)nextBlock) % BLOCK_SIZE != 0)
     {
-        block->length += sizeof(Block) + nextBlock->length;
-        nextBlock->length = 0;
+        block->length += sizeof(Block) + ((Block *)nextBlock)->length;
+        ((Block *)nextBlock)->length = 0;
     }
 }
 
@@ -116,26 +117,18 @@ void repairBackward(Block *block)
     DLog("BACKWARD : recieved block in %p\n", block);
     
     char *prevBlock = (Block *)bigBlock;
-    while (((char *)prevBlock + sizeof(Block) + ((Block *)(prevBlock))->length) != (char *)block)
+    
+    while ( ((void *)prevBlock + sizeof(Block) + ((Block *)(prevBlock))->length) != (void *)block)
     {
-//        for (int i = 0; i < 3; i++)
-//        {
             DLog("BACKWARD : STEP %p\n", prevBlock);
             prevBlock = (char *)prevBlock + (sizeof(Block) + ((Block *)(prevBlock))->length);
-            if ((char *)prevBlock == (char *)block)
-            {
-                printf("It's a trap\n");
-                break;
-            }
-//        }
-//        break;
     }
     
-    if (!((Block *)(prevBlock))->locked)
+    if (!(((Block *)(prevBlock))->locked))
         repairForward(prevBlock);
 }
 
-void free(void *ptr)
+void customFree(void *ptr)
 {
     Block *block = ptr - sizeof(Block);
     block->locked = 0;
@@ -146,6 +139,15 @@ void free(void *ptr)
 
 void *customRealloc(void *ptr, NSUInteger size)
 {
-    free(ptr);
-    return alloc(size);
+    customFree(ptr);
+    return customAlloc(size);
+}
+
+void printBlock(void *ptr)
+{
+    Block *block = ptr;
+    
+    printf("-------\nLength : %d\n", block->length);
+    printf("Is locked : %d\n-------\n", block->locked);
+    
 }

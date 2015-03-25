@@ -1,6 +1,8 @@
 typedef unsigned int NSUInteger;
 typedef int NSInteger;
 
-void *alloc(NSUInteger);
+void *customAlloc(NSUInteger);
 void *customRealloc(void *, NSUInteger);
-void free(void *);
+void customFree(void *);
+
+void printBlock(void *);
