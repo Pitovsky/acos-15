@@ -22,6 +22,7 @@ int main(int argc, char* argv[])
 	char* str1 = (char*)malloc(length);
 	char* str2 = (char*)malloc(length);
 
+ //ilnurkh: ну бред же
 	str1 = argv[1];
 	str2 = argv[2];
 
