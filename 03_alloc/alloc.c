@@ -42,8 +42,6 @@ void _createNewBlockOfData(int *nBlocks)
     block->length = BLOCK_SIZE - sizeof(Block);
     block->locked = 0;
     
-    printBlock(block);
-    
     *nBlocks += 1;
 }
 
