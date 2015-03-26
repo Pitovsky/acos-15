@@ -8,4 +8,4 @@ libmy.so: lib.o
 	gcc -shared -o libmy.so lib.o
 lib.o: lib.c
 	gcc -fPIC -std=c99 -c lib.c
-lib.c:
+lib.c:		

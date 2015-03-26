@@ -1,16 +1,30 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-int main(int argv, char* argc[])
+typedef struct list
 {
-    FILE* fp = fopen(argc[1], "r");
+    char* key;
+    int value;
+    struct list* next;
+}list;
+
+typedef struct s_table
+{
+    list** list;
+    int size;
+}s_table;
+
+int main(int argc, char* argv[])
+{
+    FILE* fp = fopen(argv[1], "r");
     int size_table;
     fscanf(fp,"%d",&size_table);
     fscanf(fp, "%d",&size_table);
-    struct list** table;
-    MakeTable(&table, size_table);
-    
+    printf("%d\n",size_table);
+    s_table table1;
+    printf("hello maketable\n");
+    MakeTable(&table1, &size_table);
+    printf("%d\n",table1.size); 
     int stream;
     int val;
     int* search;
@@ -25,16 +39,16 @@ int main(int argv, char* argc[])
 	{
 	    key = (char*) malloc (sizeof(char)*20);	
 	    fscanf(fp, "%s %d", key, &val);
-	    plus( table, key, val, size_table);	    
+	    plus(table1, key, val);	    
 	}
 	if (stream == 2)
 	{
-	    Print(table, size_table);
+	    Print(table1);
 	}
 	if (stream == 3)
 	{
 	    fscanf(fp, "%s", key);
-	    search = Search_new(key, table, size_table);
+	    search = Search_new(key, table1);
 	    if (search == NULL)
 	    {
 		printf("Элемент %s не найден\n",key);
@@ -47,41 +61,14 @@ int main(int argv, char* argc[])
         if (stream == 4)
         {
 	    fscanf(fp, "%s", key);
-	    delete(table, key, size_table);
+	    delete(table1, key);
 	}
 	if (stream == 5)
 	{
-    	    delete_table(table, size_table);
+    	    delete_table(table1);
 	} 
     }
-    //plus(table, "d", 34, size_table);
-
-    //plus(table, "fghf", 45, size_table);
-
-    //plus(table, "dfhtjrs", 666, size_table);
     
-    //printf("\n");
-    //Print(table, size_table);
-
-    //int* a;
-    //a = Search_new("fghf", table, size_table);
-    
-    //if (a == NULL)
-    //{
-    //    printf("Неудача\n");
-    //}
-    //else
-    //{
-    //    printf("%d\n",(int) a);
-    //}
-    
-    //printf("\n");
-    //delete(table, "dfhtjrs",size_table);
-    
-    //Print(table,size_table);
-    //delete_table(table,size_table);
-
-    //Print(table,size_table);
     return 0;
 }
 

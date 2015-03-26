@@ -1,21 +1,34 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+typedef struct list list;
 struct list
 {
     char* key;
     int value;
-    struct list* next;
+    list* next;
 };
 
-void  MakeTable(struct list*** table, int size_table)
+typedef struct s_table s_table;
+struct s_table
 {
-    (*table) = (struct list**) malloc(sizeof(struct list*) * size_table);
-    for (int i=0;i<size_table;i++)
+    list** list;
+    int size;
+};
+
+void  MakeTable(s_table* table, int* size_table)
+{
+    printf("%d\n", *size_table);
+    int size = *size_table;
+    table->list = (list**) malloc(sizeof(list*) * size);
+    int i;
+    printf("%d\n",size);
+    for (i=0;i<size;i++)
     {
-        (*table)[i] = NULL;
+	table->list[i] = NULL;
     }
-    printf("Создана таблица размером %d\n", size_table);
+    table->size = size;
+    printf("Создана таблица размером %d\n", size);
 }
 
 int Hash (char* v,int size_table)
@@ -29,24 +42,24 @@ int Hash (char* v,int size_table)
     return h;
 }
 
-void plus(struct list** table, char* a, int val, int size_table)
+void plus(s_table table, char* a, int val)
 {
-    struct list* help = (struct list*) malloc (sizeof(struct list));
-    int ind = Hash(a,size_table);
+    list* help = (list*) malloc (sizeof(list));
+    int ind = Hash(a, table.size);
     help->key = a;
-    help->next = table[ind];
-    table[ind] = help;
+    help->next = table.list[ind];
+    table.list[ind] = help;
     help->value = val;
     printf("Добавлена строка %s - %d\n", a, val);
 }
 
-void Print (struct list** table, int size_table)
+void Print (s_table table)
 {
     printf("Печать таблицы...\n");
-    struct list* d;
-    for (int i=0;i<size_table;i++)
+    list* d;
+    for (int i=0;i<table.size;i++)
     {
-        d = table[i];
+        d = table.list[i];
         while (d != NULL)
         {
             printf("%s %d, ",d->key,d->value);
@@ -57,11 +70,11 @@ void Print (struct list** table, int size_table)
     printf("\n");
 }
 
-int* Search_new(char* a, struct list** table, int size_table)
+int* Search_new(char* a, s_table table)
 {
     printf("Поиск элемента %s...\n", a);
-    int index = Hash(a, size_table);
-    struct list* help = table[index];
+    int index = Hash(a, table.size);
+    list* help = table.list[index];
     int _key = 0;
     while ((help != NULL) && (_key == 0))
     {
@@ -85,24 +98,24 @@ int* Search_new(char* a, struct list** table, int size_table)
     }
 }
 
-void delete (struct list** table, char* a, int size_table)
+void delete (s_table table, char* a)
 {
     printf("Удаление элемента %s...\n", a);
-    int ind = Hash(a, size_table);
-    struct list* ex = (struct list*) malloc(sizeof(struct list)); 
-    ex = table[ind];
-    if (table[ind] != NULL)
+    int ind = Hash(a, table.size);
+    list* ex = (list*) malloc(sizeof(list)); 
+    ex = table.list[ind];
+    if (table.list[ind] != NULL)
     {
-        if (table[ind]->key == a)
+        if (table.list[ind]->key == a)
         {
-            struct list* h = table[ind];
-            table[ind] = table[ind]->next;
+            list* h = table.list[ind];
+            table.list[ind] = table.list[ind]->next;
             free(h);
         }
         else
         {
             int key = 0;
-            if (table[ind]->next != NULL)
+            if (table.list[ind]->next != NULL)
             {
                 while ((ex->next->next != NULL) && (key == 0))
                 {
@@ -117,7 +130,7 @@ void delete (struct list** table, char* a, int size_table)
                 }
                 if (key != 0)
                 {
-                    struct list* help = ex->next;
+                    list* help = ex->next;
                     ex->next = ex->next->next;
                     free(help);
                 }
@@ -126,21 +139,21 @@ void delete (struct list** table, char* a, int size_table)
     }
 }
 
-void delete_table(struct list** table,int size_table)
+void delete_table(s_table table)
 {
     printf("Удаление таблицы...\n");
-    struct list* help,*help_2;
-    for (int i=0;i<size_table;i++)
+    list* help,*help_2;
+    for (int i=0;i<table.size;i++)
     {
-        if (table[i] == NULL)
+        if (table.list[i] == NULL)
         {
-            free(table[i]);
+            free(table.list[i]);
         }
         else
         {
-            help = table[i]->next;
-	    free(table[i]->key);
-            free(table[i]);
+            help = table.list[i]->next;
+	    free(table.list[i]->key);
+            free(table.list[i]);
             while (help != NULL)
             {
                 help_2 = help;
@@ -149,7 +162,7 @@ void delete_table(struct list** table,int size_table)
 		free(help_2);
             }
         }
-        table[i] = NULL;
+        table.list[i] = NULL;
     }
-    free(table);
+    free(table.list);
 }
