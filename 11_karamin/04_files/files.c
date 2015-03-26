@@ -115,6 +115,7 @@ void run(char* dir, int depth, int limit, int CheckLinks)
 
 int main(int argc, char**argv)
 {
+	if (argc == 1) printf("argc == 1");
 	if (argc < 2)
 	{
 		printf("Wrong input.\n");
