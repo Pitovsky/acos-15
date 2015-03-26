@@ -161,7 +161,10 @@ void* my_malloc(size_t size)
         node = occupy_existing_buffer(size);
     } 
     assert(node > 0);
-    last_available_space = max(last_available_space, node + size);
+
+    last_available_space = max(last_available_space, (void*)node + size);
+
+
     return (void*)node + sizeof(struct mem_buffer_t);
 }
 
@@ -182,7 +185,9 @@ int main()
     my_free(A);
     my_free(B);
 
-    printf("seems to work");
+    for (i = 0; i < 50; ++i) {
+        int* b = my_malloc(50000);
+    }
 
 
     return 0;
