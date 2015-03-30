@@ -17,14 +17,22 @@ int size(char* name)
         fscanf(file,"%c", &a);
         while (!feof(file))
         {
-            if (((a == '\n') || (a == ' ')) && (key != 1))
-            {
-                ++count;
-                key = 1;
-            }
-            if ((a != '\n') && (a != ' ') && (key == 1))
+            if (((((int) a - '0' >= 0) && ((int) a - '0' <= 9))
+	      || (((int) a - 'A' >= 0) && ((int) a - 'Z' <= 25))
+	      || (((int) a - 'a' >= 0) && ((int) a - 'z' <= 25))
+	      || (a == "_")) 
+	      && (key == 1))
             {
                 key = 0;
+            }
+            if ((!(((int) a - '0' >= 0) && ((int) a - '0' <= 9))
+              && !(((int) a - 'A' >= 0) && ((int) a - 'Z' <= 25))
+              && !(((int) a - 'a' >= 0) && ((int) a - 'z' <= 25))
+              && !(a == "_"))
+              && !(key == 1))
+            {
+                ++count;
+		key = 1;
             }
             fscanf(file, "%c", &a);
         }
@@ -43,8 +51,8 @@ void process_dir(char* name, short flag_r, short flag_s, int count_space)
     DIR* dir = opendir(name);
     struct dirent* a  = readdir(dir);
     struct stat status;
-    char final[PATH_MAX +1 ];
-    char link[PATH_MAX + 1];
+    char final[PATH_MAX];
+    char link[PATH_MAX];
     FILE* h;
     sprintf(final, "%s/%s", name, a->d_name);
     lstat(final, &status);
