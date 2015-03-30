@@ -92,7 +92,7 @@ void run(char* dir, int depth, int limit, int CheckLinks)
 			{
 				//Посчитать слова
 				FILE *in = fopen(filepath, "r"); 
-				printf("WORDS in motherfuckingfile %s\n------------>%d.\n", filepath, words(in));
+				printf("WORDS in file %s\n------------>%d.\n", filepath, words(in));
 				fclose(in);
 			}
 			if(S_ISDIR(fileinfo.st_mode)) //Если директория
@@ -105,7 +105,7 @@ void run(char* dir, int depth, int limit, int CheckLinks)
 				int n = readlink(filepath, filepath, sizeof(filepath) - 1);
 				filepath[n] = '\0';
 				FILE* in = fopen(filepath, "r");
-				printf("WORDS in motherfuckingfile %s--->%d.\n", filepath, words(in));
+				printf("WORDS in file %s--->%d.\n", filepath, words(in));
 				fclose(in);
 			}
 		}

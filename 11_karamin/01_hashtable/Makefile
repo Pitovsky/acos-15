@@ -1,4 +1,4 @@
-all:hashtable
+all:hashtable clean
 
 hashtable: HT.o test.o
 	gcc HT.o test.o -o hashtable
