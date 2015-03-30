@@ -30,7 +30,7 @@ void print_list()
 void* my_malloc(int size)
 {
     printf("Выделение памяти размером %d...\n", size);
-    if (heap_begin == NULL)
+    if (heap_begin == NULL) //если мы выделяем память первый раз
     {
         heap_begin = sbrk(1<<20);
         list a;
@@ -41,10 +41,10 @@ void* my_malloc(int size)
         list* heap_begin_new = (list*) heap_begin;
         *heap_begin_new = a;
     }
-    list* stream = (list*) heap_begin;
+    list* stream = (list*) heap_begin; 
     list* stream_copy = stream;
-    int key = 0;
-    while ((key == 0) && (stream_copy != NULL))
+    int key = 0;//key : 0 - нет уже выделенного свободного куска размера, совпадающего с требуемым ; 1 - такой кусок есть
+    while ((key == 0) && (stream_copy != NULL))//поиск такого куска, если он найдется, то stream_copy будет указателем на следующий после него кусок (последний кусок(элемент списка) всегда свободен
     {
         if ((stream_copy->size == size) && (stream_copy->flag == 0))
         {
@@ -52,32 +52,32 @@ void* my_malloc(int size)
         }
         stream_copy = stream_copy->next;
     }
-    if (key == 1)
+    if (key == 1)//кусок ровно требемого размера нашелся
     {
         stream_copy = stream_copy->prev;
         stream_copy->flag = 1;
         print_list();
         return ((char*) stream_copy) + sizeof(list);
     }
-    else
+    else//кусок ровно требуемого размера не нашелся
     {
-        while ((((stream->size < size + sizeof(list)) && (stream->flag == 0)) && (stream->next != NULL)) || (stream->flag == 1))
+        while (((stream->size < size + sizeof(list)) && (stream->flag == 0) && (stream->next != NULL)) || (stream->flag == 1))//доходим либо до последнего элемента, либо до элемента, в который поместится нужный нам размер + лист списка + хотя бы один байт
         {
             stream = stream->next;
         }
-        if (size >= stream->size + sizeof(list))
+        if (size >= stream->size + sizeof(list))//условие может быть верно только у последнего элемента, поэтому если размера не хватает, то мы выделяем нужное количество мегабайт(кусков, на которые мы сдвигаем через sbrk
         {
-            sbrk(1<<20);
+            sbrk((1<<20) * ((size+sizeof(list)) / (1<<20) + 1));
         }
-        char* last = (char*) stream;
+        char* last = (char*) stream;//создаем новый последний элемент списка(new_last)
         last += sizeof(list) + size;
         list* new_last = (list*) last;
-        list new;
-        new.prev = stream;
-        new.next = stream->next;
-        new.flag = 0;
-        new.size = stream->size - size - sizeof(list);
-        *new_last = new;
+
+        new_last->prev = stream;//заполняем его
+        new_last->next = stream->next;
+        new_last->flag = 0;
+        new_last->size = stream->size - size - sizeof(list);
+
         stream->flag = 1;
         stream->size = size;
         stream->next = new_last;
