@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define PAGESIZE 1024
-//For testing it is useful set 1KB, no 1MB
+#define PAGESIZE 1024*1024
 
 struct memPart
 {
@@ -11,67 +10,6 @@ struct memPart
     struct memPart* prev;
     int free;
 };
-void* myMalloc(int size)
-{
-    static struct memPart* root;
-    if (root == NULL)
-    {
-        root = (struct memPart*)sbrk(PAGESIZE);
-        root->size = PAGESIZE - sizeof(struct memPart);
-        root->free = 0; //free part
-        root->prev = NULL;
-        root->next = NULL;
-    }
-
-    struct memPart* nextPart = root; //part, which we will return
-    while (nextPart->next != NULL)
-    {
-        nextPart = nextPart->next;
-    }
-
-    struct memPart* lessPart = root; //part, which we will split or
-    while (lessPart != NULL && (lessPart->free != 0 || lessPart->size < size + sizeof(struct memPart)))
-        lessPart = lessPart->next;
-
-    if (lessPart == NULL)
-    {
-        printf("myMalloc: Out of memory. Getting bigger...\n");
-        nextPart->next = (struct memPart*)sbrk(PAGESIZE);
-        nextPart->next->free = 0;
-        nextPart->next->size = PAGESIZE - sizeof(struct memPart);
-        nextPart->next->prev = nextPart;
-        nextPart->next->next = NULL;
-        nextPart = nextPart->next;
-
-        printf("Ok.\n");
-        lessPart = root;    //try again
-        while (lessPart != NULL && (lessPart->free != 0 || lessPart->size < size + sizeof(struct memPart)))
-            lessPart = lessPart->next;
-    }
-    if (lessPart == NULL)
-    {
-        fprintf(stderr, "myMalloc: Out of memory. Call is too big.\nFatal error\n");
-        return NULL;
-    }
-
-    nextPart->next = (struct memPart*)((void*)lessPart + lessPart->size - size);
-    lessPart->size = lessPart->size - size - sizeof(struct memPart);
-
-    nextPart->next->next = NULL;
-    nextPart->next->prev = nextPart;
-    nextPart->next->size = size;
-    nextPart->next->free = -1;
-
-    struct memPart* nowPart = root;
-    /*while(nowPart != NULL)
-    {
-        printf("%d\t%d\t (%d): %d\n", (int)nowPart, (int)((int)nowPart + sizeof(struct memPart) + nowPart->size),
-            nowPart->size, nowPart->free);
-        nowPart = nowPart->next;
-    }*/
-
-    return (void*)(nextPart->next) + sizeof(struct memPart);
-}
 
 int getNeisMem(struct memPart* ptr, struct memPart** realPrev, struct memPart** realNext) //search for real neighboors in memory
 {
@@ -125,6 +63,69 @@ int myFree(void* ptr)
             delNext->next->prev = delNext->prev;
     }
     return 0;
+}
+
+void* myMalloc(int size)
+{
+    static struct memPart* root;
+    if (root == NULL)
+    {
+        root = (struct memPart*)sbrk(PAGESIZE);
+        root->size = PAGESIZE - sizeof(struct memPart);
+        root->free = 0; //free part
+        root->prev = NULL;
+        root->next = NULL;
+    }
+
+    struct memPart* nextPart = root; //part, which we will return
+    while (nextPart->next != NULL)
+    {
+        nextPart = nextPart->next;
+    }
+
+    struct memPart* lessPart = root; //part, which we will split or
+    while (lessPart != NULL && (lessPart->free != 0 || lessPart->size < size + sizeof(struct memPart)))
+        lessPart = lessPart->next;
+
+    if (lessPart == NULL)
+    {
+        printf("myMalloc: Out of memory. Getting bigger...\n");
+        nextPart->next = (struct memPart*)sbrk(PAGESIZE);
+        nextPart->next->free = 0;
+        nextPart->next->size = PAGESIZE - sizeof(struct memPart);
+        nextPart->next->prev = nextPart;
+        nextPart->next->next = NULL;
+        myFree(nextPart->next + sizeof(struct memPart)); //for merging, if possible
+        nextPart = nextPart->next;
+
+        printf("Ok.\n");
+        lessPart = root;    //try again
+        while (lessPart != NULL && (lessPart->free != 0 || lessPart->size < size + sizeof(struct memPart)))
+            lessPart = lessPart->next;
+    }
+    if (lessPart == NULL)
+    {
+        fprintf(stderr, "myMalloc: Out of memory. Call is too big.\nFatal error\n");
+        return NULL;
+    }
+
+    nextPart->next = (struct memPart*)((void*)lessPart + lessPart->size - size);
+    lessPart->size = lessPart->size - size - sizeof(struct memPart);
+
+    nextPart->next->next = NULL;
+    nextPart->next->prev = nextPart;
+    nextPart->next->size = size;
+    nextPart->next->free = -1;
+
+    struct memPart* nowPart = root;
+    /*while(nowPart != NULL)
+    {
+        printf("%d\t%d\t (%d): %d\n", (int)nowPart, (int)((int)nowPart + sizeof(struct memPart) + nowPart->size),
+            nowPart->size, nowPart->free);
+        nowPart = nowPart->next;
+    }*/
+
+    return (void*)(nextPart->next) + sizeof(struct memPart);
 }
 
 void getStat(void* ptr)
