@@ -3,17 +3,16 @@
 static const char IS_FREE = 1;
 static const char NOT_FREE = 0;
 
-//16 bytes
 typedef struct Header
 {
-    unsigned block_size;
+    size_t block_size;
     char is_free;
     struct Header *next, *prev;
 } Header;
 
 Header *in_block = NULL;
 
-void *request_mem(unsigned space_amount)
+void *request_mem(size_t space_amount)
 {
     void *allocated_mem = sbrk(space_amount);
 
@@ -145,8 +144,9 @@ Header *extend_last_block(Header *in_block)
     }
 }
 
-void *allocate_block(Header *block, unsigned space_amount)
+void *allocate_block(Header *block, size_t space_amount)
 {
+    //если можем отрезать от выбранного блока еще свободное пространства
     if (block->block_size - space_amount > sizeof(Header))
     {
         Header *new_block = (Header*) ((char*) (block) + sizeof(Header) + space_amount);
@@ -167,13 +167,14 @@ void *allocate_block(Header *block, unsigned space_amount)
         merge_next(new_block);
     }
 
+    //после этого в любом случае нужно пометить блок занятым
     block->is_free = NOT_FREE;
     print_mem_list(in_block);
 
     return (char*)block + sizeof(Header);
 }
 
-void *my_malloc(unsigned space_amount)
+void *my_malloc(size_t space_amount)
 {
     printf("\033[0mALLOC: %d\033[0m\n", space_amount);
 
@@ -210,7 +211,7 @@ void *my_malloc(unsigned space_amount)
     return allocate_block(last_block, space_amount);
 }
 
-void *my_calloc(unsigned space_amount)
+void *my_calloc(size_t space_amount)
 {
     printf("\033[0mCALLOC: %d\033[0m\n", space_amount);
 
@@ -222,7 +223,7 @@ void *my_calloc(unsigned space_amount)
     return memset(new_mem, 0, space_amount);
 }
 
-void *my_realloc(void *ptr, unsigned new_space_amount)
+void *my_realloc(void *ptr, size_t new_space_amount)
 {
     printf("\033[0mREALLOC: %p - %d\033[0m\n", ptr, new_space_amount);
     Header *block = (Header*) ((char*)ptr - sizeof(Header));
