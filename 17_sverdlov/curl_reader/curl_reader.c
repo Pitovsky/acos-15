@@ -92,12 +92,14 @@ int main()
             if (pid == 0) {
                 // child
                 child_read(fd_pipe[0]);
+                break;
             }
 
             pid = fork();
             if (pid == 0) {
                 // child
                 curl_execute(fd_pipe[1], s_url_good);
+                break;
             }
 
         }
