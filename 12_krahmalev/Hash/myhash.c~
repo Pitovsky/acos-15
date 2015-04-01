@@ -9,8 +9,7 @@ struct list{
 
 struct list** MakeTable(int n){
     int i;
-    struct list** result;
-    result = (struct list**) malloc(sizeof(struct list*)*n);
+    struct list** result = (struct list**) malloc(sizeof(struct list*)*n);
     for(i=0;i<n;i++){
         result[i] = NULL;
     }

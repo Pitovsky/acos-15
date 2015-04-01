@@ -1,0 +1,17 @@
+all: myhash
+
+myhash: main.o myhash.o hash.o
+	gcc main.o myhash.o hash.o -o myhash
+
+main.o: main.c
+	gcc -c main.c
+
+myhash.o: myhash.c
+	gcc -c myhash.c
+
+hash.o: hash.h
+	gcc -h hash.h
+
+clean:
+	rm -rf *.o myhash
+
