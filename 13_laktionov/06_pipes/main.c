@@ -10,6 +10,26 @@
 
 extern char** environ;
 
+int pseudoInputFromBash(){
+    int input_pipes[2];
+    if (pipe(input_pipes) < 0){
+        printf("can't open pipe");
+        exit(1);
+    }
+    int sites = 0;
+    char* bufToWrite = (char*)malloc(256);
+    while (1){
+        scanf("%s", bufToWrite);
+        sites++;
+        if (strcmp(bufToWrite, "0")==0)
+            break;
+        write(input_pipes[1], bufToWrite, 256);
+    }
+    free(bufToWrite);
+    close(input_pipes[1]);
+    return input_pipes[0];
+}
+
 int isRef(size_t parseCounter, char* c){
     if ((c[0] == '<' && parseCounter == 0) ||
         (c[0] == 'a' && parseCounter == 1) ||
@@ -36,6 +56,7 @@ int main(int argc, char* argv[]) {
         exit(1);
     }
     //>
+    //int input_pipe = pseudoInputFromBash();
     
     int bashPipe[2];// общение баша с программой
     pipe(bashPipe);
@@ -50,7 +71,15 @@ int main(int argc, char* argv[]) {
     size_t parseSize = 0;
     size_t parseCounter = 0;
 
-    while (read(input_pipe, currentURL, 256) > 0){
+    char* charCurrentURL = (char*)malloc(2*sizeof(char));
+    charCurrentURL[0] = 0;
+    size_t errPipe;
+    while (1){
+        strcpy(currentURL, "");
+        while (((errPipe = read(input_pipe, &(*charCurrentURL), 1)) > 0) && (charCurrentURL[0] != '|'))
+            strcat(currentURL, charCurrentURL);
+        if (errPipe <= 0)
+            break;
         pid_t pid = fork();
         if (pid == 0){
             argv[1] = currentURL;
