@@ -42,9 +42,10 @@ void clearTable(struct Table *p)
             while (nextPage != NULL)
             {
                 free(nextPage->key);
+                struct List *tmpPage = nextPage;
                 nextPage = nextPage->next;
+                free(tmpPage);
             }
-            free(p->korts[i]);
         }
     free(p->korts);
 }
@@ -94,7 +95,7 @@ struct Table *writeElement(struct Table *p, char *key, void* value)
         nextPage->next->value = newv;
         nextPage->next->key = newKey;
     }
-    ++p->realSize;
+    ++(p->realSize);
     if (p->realSize > 4*p->size/3)
     {
         struct Table *pnew = createTable(2*p->size);
