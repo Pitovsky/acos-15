@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
-#define PAGESIZE 1024*1024
+#define PAGESIZE 1024*4
 
 struct memPart
 {
@@ -19,12 +19,12 @@ int getNeisMem(struct memPart* ptr, struct memPart** realPrev, struct memPart** 
         root = (struct memPart*)(root->prev);
     }
     *realPrev = root;
-    *realNext = root;
+    *realNext = ptr + sizeof(struct memPart) + ptr->size;
+    if (*realNext > PAGESIZE)
+        *realNext = NULL;
 
     while (*realPrev != NULL && (void*)(*realPrev) + ((*realPrev)->size) + sizeof(struct memPart) != ptr)
         *realPrev = (*realPrev)->next;
-    while (*realNext != NULL && (void*)(*realNext) != (void*)ptr + sizeof(struct memPart) + (ptr->size))
-        *realNext = (*realNext)->next;
 
     return 0;
 }
@@ -46,7 +46,7 @@ int myFree(void* ptr)
     if (delPrev != NULL && delPrev->free == 0) //merge with previous
     {
         delPrev->size = delPrev->size + (delPart->size) + sizeof(struct memPart);
-        //printf("merge left\n");
+        printf("merge left\n");
         if (delPart->prev != NULL)
             delPart->prev->next = delPart->next;
         if (delPart->next != NULL)
@@ -56,7 +56,7 @@ int myFree(void* ptr)
     if (delNext != NULL && delNext->free == 0) //merge with next
     {
         delPart->size = delPart->size + (delNext->size) + sizeof(struct memPart);
-        //printf("merge right\n");
+        printf("merge right\n");
         if (delNext->prev != NULL)
             delNext->prev->next = delNext->next;
         if (delNext->next != NULL)
@@ -134,6 +134,7 @@ void getStat(void* ptr)
         int useBytes = 0;
         int allBytes = 0;
         int partCount = 0;
+        int effProc = 0;
         struct memPart* nowPart = (struct memPart*)((void*)ptr - sizeof(struct memPart));
         while (nowPart->prev != NULL)
                 nowPart = nowPart->prev;
@@ -153,6 +154,8 @@ void getStat(void* ptr)
                 partCount++;
                 nowPart = nowPart->next;
         }
+        effProc = 100*(allBytes - partCount*sizeof(struct memPart)) / allBytes;
+        printf("mem effiency: %d%%\n", effProc);
         printf("%d parts:\n%d free\t%d use\nall: %d bytes.\n", partCount, freeBytes, useBytes, allBytes);
 }
 

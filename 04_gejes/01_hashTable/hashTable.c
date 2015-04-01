@@ -42,7 +42,6 @@ void clearTable(struct Table *p)
             while (nextPage != NULL)
             {
                 free(nextPage->key);
-                free(nextPage->value);
                 nextPage = nextPage->next;
             }
             free(p->korts[i]);
