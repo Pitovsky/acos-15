@@ -2,22 +2,21 @@
 #include <unistd.h>
 #include <string.h>
 
-
-#define PAGESIZE 1024
+#define cellSize 1024
 
 struct memoryCell{
     struct memoryCell* next;
     struct memoryCell* prev;
     size_t size;
-    size_t free;
+    size_t isFree;
 };
 
 struct memoryCell* firstCell;
 
 void firstAlloc(){
-    firstCell = (struct memoryCell*)sbrk(1024);
+    firstCell = (struct memoryCell*)sbrk(cellSize);
     firstCell->size = 1024 - sizeof(struct memoryCell);
-    firstCell->free = 0;
+    firstCell->isFree = 1;
     firstCell->prev = NULL;
     firstCell->next = NULL;
 }
@@ -29,88 +28,98 @@ struct memoryCell* getLast(){
     return lastCell;
 }
 
-void getMemory(struct memoryCell* cell){
-    cell->next = (struct memoryCell*)sbrk(1024);
-    cell->next->prev = cell;
-    cell = cell->next;
-    cell->free = 0;
-    cell->size = 1024 - sizeof(struct memoryCell);
-    cell->next = NULL;
-}
-
-struct memoryCell* getTargetCell(size_t size){
-    struct memoryCell* targetCell = firstCell;
-    while(1){
-        if (!targetCell || (targetCell->free>0 && size+sizeof(struct memoryCell)<=targetCell->size))
-            break;
-        targetCell = targetCell->next;
-    }
-    return targetCell;
-}
-
-void prepareAllocation(size_t size, struct memoryCell* cell, void* position){
-    cell->next = (struct memoryCell*)position;
-    cell->next->next = NULL;
-    cell->next->prev = cell;
-    cell->next->size = size;
-    cell->next->free = 0;
-}
-
-void* my_malloc(size_t size){
-    
-    if (!firstCell){
+void* my_malloc(ssize_t requestedSize){
+    if (!firstCell)
         firstAlloc();
-        return ( (void*)firstCell + sizeof(struct memoryCell) );
+    struct memoryCell* currentCell = firstCell;
+    while (currentCell->next)
+        if (currentCell->isFree == 1 && currentCell->size >= requestedSize){
+            currentCell->isFree = 0;
+            return ((void*)currentCell + sizeof(struct memoryCell));
+        }
+    //current cell не нашла свободных подходящего размера и дошла до последней
+    //значит надо выделить новую клетку
+    struct memoryCell* returnCell = (struct memoryCell*)sbrk(cellSize);
+    // эта ячейка вернется, если просят меньше cellSize; иначе расширяем её
+    returnCell->size = cellSize - sizeof(struct memoryCell);
+    returnCell->prev = currentCell;
+    returnCell->next = NULL;
+    returnCell->isFree = 0;
+    requestedSize -= returnCell->size;
+    //наращиваем последнюю клетку
+    while (requestedSize > 0){
+        returnCell->size += cellSize;
+        returnCell = (struct memoryCell*) ( (void*)sbrk(cellSize) - 1024);
+        requestedSize -= cellSize;
     }
-    struct memoryCell* lastCell = getLast();
-    struct memoryCell* targetCell = getTargetCell(size);
-    
-    //get more memory
-    if (!targetCell){
-        getMemory(lastCell);
-        targetCell = getTargetCell(size);
-    }
-    
-    //no free memory
-    if (!targetCell)
-        return NULL;
-    
-    void* position = (void*)targetCell + targetCell->size - size;
-    prepareAllocation(size, lastCell, position);
-    targetCell->size -= (sizeof(struct memoryCell) + size);
-    
-    return ( (void*)(lastCell->next) + sizeof(struct memoryCell) );
+    return ( (void*)returnCell + sizeof(struct memoryCell) );
 }
 
 void my_free(void* cell){
-    struct memoryCell* deleted = (struct memoryCell*)(cell - sizeof(struct memoryCell));
-    deleted->free = deleted->size;
-    if (deleted->prev && deleted->next){
-        if (deleted->prev->size==deleted->prev->free && deleted->next->size==deleted->next->free){
-            deleted->prev->next = deleted->next->next;
-            deleted->prev->size += (deleted->size+deleted->next->size+2*(sizeof(struct memoryCell)));
-            deleted->prev->free = deleted->prev->size;
-        }else
-        if (deleted->prev->size == deleted->prev->free){
-            deleted->prev->size += (deleted->size + sizeof(struct memoryCell));
-            deleted->prev->free = deleted->prev->size;
-            deleted->prev->next = deleted->next;
-            deleted->next->prev = deleted->prev;
-        }else
-        if (deleted->next->size == deleted->next->free){
-            deleted->next->size += (deleted->size + sizeof(struct memoryCell));
-            deleted->next->free = deleted->next->size;
-            deleted->next->prev = deleted->prev;
-            deleted->prev->next = deleted->next;
+    struct memoryCell* cellToFree = (struct memoryCell*)(cell - sizeof(struct memoryCell));
+    cellToFree->isFree = 1;
+    if (cellToFree->next){
+        if (cellToFree->next->isFree == 1){
+            cellToFree->size += cellToFree->next->size;
+            if (cellToFree->next->next){
+                cellToFree->next->next->prev = cellToFree;
+                cellToFree->next = cellToFree->next->next;
+            }else
+                cellToFree->next = NULL;
         }
     }
+    if (cellToFree->prev){
+        if (cellToFree->prev->isFree == 1){
+            cellToFree->prev->size += cellToFree->size;
+            if (cellToFree->next){
+                cellToFree->next->prev = cellToFree->prev;
+                cellToFree->prev->next = cellToFree->next;
+            }else
+                cellToFree->prev->next = NULL;
+        }
+    }
+    return;
 }
 
-int main(int argc, char** argv)
-{
-    char* checkString = (char*)my_malloc(255);
-    strcpy(checkString, "hello world");
-    printf("%s", checkString);
-    my_free(checkString);
+int main(int argc, char** argv){
+    setbuf(stdout, NULL);
+    char* checkString1 = (char*)my_malloc(255);
+    strcpy(checkString1, "hello world1;\n");
+    
+    printf("%s", checkString1);
+    
+    my_free(checkString1);
+    
+    char* checkString2 = (char*)my_malloc(255);
+    strcpy(checkString2, "hello world2;\n");
+    char* checkString3 = (char*)my_malloc(255);
+    strcpy(checkString3, "hello world3;\n");
+    
+    printf("%s", checkString2);
+    
+    char* checkString4 = (char*)my_malloc(2049);
+    strcpy(checkString4, "hello world4;\n");
+    char* checkString5 = (char*)my_malloc(255);
+    strcpy(checkString5, "hello world5;\n");
+    
+    printf("%s", checkString4);
+    
+    my_free(checkString4);
+    my_free(checkString2);
+    
+    char* checkString6 = (char*)my_malloc(1025);
+    strcpy(checkString6, "hello world6;\n");
+    printf("%s", checkString3);
+    
+    printf("%s", checkString6);
+    
+    my_free(checkString6);
+    
+    printf("%s", checkString5);
+    
+    my_free(checkString3);
+
+    printf("%s", checkString5);
+    //1243655
     return 0;
 }
