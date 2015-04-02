@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
     size_t errPipe;
     while (1){
         strcpy(currentURL, "");
-        while (((errPipe = read(input_pipe, &(*charCurrentURL), 1)) > 0) && (charCurrentURL[0] != '|'))
+        while (((errPipe = read(input_pipe, &(*charCurrentURL), 1)) > 0) && (charCurrentURL[0] != '\n'))
             strcat(currentURL, charCurrentURL);
         if (errPipe <= 0)
             break;
@@ -94,6 +94,7 @@ int main(int argc, char* argv[]) {
             printf("\n\n-----SITE:%s\n", currentURL);
             while(wait(0) > 0);
             while (read(bashPipe[0], &(*c), 1) > 0){
+                //printf("%c", c[0]);
                 if (isRef(parseCounter, c) == 1){
                     ++parseCounter;
                     parseSize = 0;
