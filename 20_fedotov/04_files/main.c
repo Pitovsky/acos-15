@@ -17,17 +17,18 @@
 #include <dirent.h>
 #include <unistd.h>
 #include <time.h>
+#include "NewHash.c"
 
 int WordCounter(FILE* OurFile) {
     int WordCounter = 0;
     int trueOrFalse = 0;
     int Check;
     while ((Check = getc(OurFile)) > 0) {
-        if(!(((Check < 48 && Check != 45) || (Check > 57 && Check < 65) || (Check > 90 && Check < 97 && Check != 95) || Check > 122)) && !trueOrFalse) {
+        if(!(((Check < '0' && Check != '-') || (Check > '9' && Check < 'A') || (Check > 'z' && Check < 'a' && Check != '_') || Check > 'z')) && !trueOrFalse) {
             ++WordCounter;
             trueOrFalse = 1;
         }
-        else if(((Check < 48 && Check != 45) || (Check > 57 && Check < 65) || (Check > 90 && Check < 97 && Check != 95) || Check > 122)) {
+        else if(((Check < '0' && Check != '-') || (Check > '9' && Check < 'A') || (Check > 'z' && Check < 'a' && Check != '_') || Check > 'z')) {
             trueOrFalse = 0;
         }
     }
@@ -35,7 +36,7 @@ int WordCounter(FILE* OurFile) {
 }
 
 
-void Processing( char *DatDir, int Depth, int Restriction)
+void Processing( char *DatDir, int Depth, int Restriction, int Flag, struct Table* DatTable)
 {
     if(Depth > Restriction) {
         printf("popalsya\n");
@@ -47,7 +48,7 @@ void Processing( char *DatDir, int Depth, int Restriction)
     struct dirent *ThisElemPtr = NULL;
     int Result = 0;
     unsigned Counter = 0;
-    char PathName[PATH_MAX + 1];
+    char FileName[PATH_MAX + 1];
     
     //Проверить, можно ли открыть директорию
     MyDir = opendir(DatDir);
@@ -63,45 +64,58 @@ void Processing( char *DatDir, int Depth, int Restriction)
             Result = readdir_r( MyDir, &ThisElem, &ThisElemPtr );
             continue;
         }
-        strncpy(PathName, DatDir, PATH_MAX);
-        strncat(PathName, "/", PATH_MAX);
-        strncat(PathName, ThisElem.d_name, PATH_MAX);
+        strncpy(FileName, DatDir, PATH_MAX);
+        strncat(FileName, "/", PATH_MAX);
+        strncat(FileName, ThisElem.d_name, PATH_MAX);
         //Тут в ПасНейме лежит имя файла, который мы обрабатываем
-        if( lstat(PathName, &entryInfo )== 0 ) {
+        if( lstat(FileName, &entryInfo )== 0 ) {
             //Статистику приняли успешно
             ++Counter;
             
             if(S_ISDIR(entryInfo.st_mode)) {
+                
                 //директория
-                printf( "processing %s/\n", PathName );
-                Processing( PathName, Depth + 1, Restriction);
-            } else if(S_ISREG(entryInfo.st_mode)) {
+                printf( "processing %s/\n", FileName );
+                Processing( FileName, Depth + 1, Restriction, Flag, DatTable);
+            } else if(S_ISREG(entryInfo.st_mode) && !Contains(DatTable, FileName)) {
+                
+                DatTable = insertToTable(DatTable, FileName);
+         
+
+                
                 //Просто файл, считаем кол-во слов
-                FILE* OurFile = fopen(PathName, "rw");
-                printf("%s\n", OurPath);
-                printf("\nWord number is : %d \n", WordCounter(OurFile));
-                printf("\n%s\n", PathName);
+                FILE* OurFile = fopen(FileName, "rw");
+                printf("\nWord number is : %d - ", WordCounter(OurFile));
+                printf("%s\n", FileName);
                 fclose(OurFile);
             }
-            else if( S_ISLNK( entryInfo.st_mode ) ) {
+            else if( S_ISLNK( entryInfo.st_mode ) && Flag) {
                 //если Симлинк
                 
+               DatTable = insertToTable(DatTable, FileName);
+      
+
                 char targetName[PATH_MAX + 1];
-                if( readlink(PathName, targetName, PATH_MAX ) != -1 ) {
-                    printf( "\t%s -> %s\n", PathName, targetName );
+                if( readlink(FileName, targetName, PATH_MAX ) != -1 && !Contains(DatTable, targetName)) {
+                    
+                    
+                  DatTable = insertToTable(DatTable, targetName);
+                 
+
+                    
+                    printf( "\n\t%s -> %s", FileName, targetName );
                     FILE* OurFile = fopen(targetName, "rw");
                     if(OurFile != NULL) {
-                        printf("%s\n", OurPath);
-                        printf("\nWord Linked is : %d \n", WordCounter(OurFile));
-                        printf("\n%s\n", PathName);
+                        printf("\nWord Linked is : %d -", WordCounter(OurFile));
+                        printf("%s\n", targetName);
                         fclose(OurFile);
                     }
                 } else {
-                    printf( "\t%s -> error symlink\n", PathName );
+                    printf( "\t%s -> error symlink\n", FileName );
                 }
             }
         } else {
-            printf( "Error in stat %s: \n", PathName);
+            printf( "Error in stat %s: \n", FileName);
         }
         Result = readdir_r( MyDir, &ThisElem, &ThisElemPtr );
     }
@@ -114,6 +128,17 @@ void Processing( char *DatDir, int Depth, int Restriction)
 
 int main( int argc, char * argv[])
 {
+    struct Table* OurTable = CreateTable(5);
+    int counter = 1;
+    int result = 0;
+    while (counter < argc && !result) {
+        if(!strcmp(argv[counter], "-s")){
+            result = 1;
+            break;
+        }
+        ++counter;
+    }
+    printf("%d", result);
     int Position = 0;
     int Restriction = atoi(argv[argc - 1]);
     if(Restriction == 0)
@@ -122,9 +147,9 @@ int main( int argc, char * argv[])
         Restriction = 0;
     else
         Restriction = 1;
-    for( Position = 1; Position < argc; Position++ ) {
-        Processing( argv[Position], 0, Restriction);
-    }
     
+    for(Position = 1; Position < argc; ++Position) {
+        Processing(argv[Position], 0, Restriction, result, OurTable);
+    }
     return 0;
 }
