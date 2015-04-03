@@ -102,7 +102,7 @@ void MergeBlocks(Block* block)										//Слить блоки block и block->
     temp = block->next;
     block->next = temp->next;
     if (temp->next) temp->next->prev = block;
-    block->size += sizeof(Block) + temp->size						//Объединить размеры
+    block->size += sizeof(Block) + temp->size;						//Объединить размеры
 }
 void UniteFreeMemory(list* memory)									//Объединить все свободные соседние куски памяти в списке
 {
@@ -319,13 +319,23 @@ int main()
     scanf("%d", &n);
     char* d = (char*)my_malloc(n*sizeof(char));
 /***********************************************************************/
+	printlist(List);
+    
     scanf("%d", &n);
-    my_realloc(d, n);
+    d = my_realloc(d, n);
+ 
+    scanf("%d", &n);
+    b = my_realloc(b, n);
+ 
+	printlist(List);
+    
     my_free(a);
     my_free(b);
     my_free(c);
     my_free(d);
-    printlist(List);
+	
+	printlist(List);
+    
 /***********************************************************************/
 
 /***********************************************************************/
