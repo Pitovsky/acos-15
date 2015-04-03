@@ -27,12 +27,11 @@ void countWords(FILE* file, char* filepath){
     fclose(file);
 }
 
-//char** visited_files;
-int c = 0;
+int C_followSymlinksOnlyOnce = 0, noS_followSymlinks = 1;
 struct Table* visited;
 
 
-void insideDir(const char* changddirname, int depth, int s){
+void insideDir(const char* changddirname, int depth){
 
     DIR* dir = NULL;
     struct dirent entry;
@@ -59,14 +58,14 @@ void insideDir(const char* changddirname, int depth, int s){
         if (S_ISDIR(entryInfo.st_mode)){
             if (depth > 1){
                 depth--;
-                insideDir(pathName, depth, s);
+                insideDir(pathName, depth);
                 ++depth;
             }else if (depth == -1)
-                insideDir(pathName, depth, s);
+                insideDir(pathName, depth);
         }else if (S_ISREG(entryInfo.st_mode)){
                         //file
             
-            if (c == 1){
+            if (C_followSymlinksOnlyOnce == 1){
                 if (contains(pathName, visited) == 0){
                     visited = insert(pathName, visited);
                     FILE* file = fopen(pathName, "r");
@@ -74,7 +73,7 @@ void insideDir(const char* changddirname, int depth, int s){
                 }
             }
             
-        }else if (S_ISLNK(entryInfo.st_mode && s == 1)){
+        }else if (S_ISLNK(entryInfo.st_mode && noS_followSymlinks == 0)){
                         //symlink
                 char buf[255];
                 realpath(pathName, buf);
@@ -82,17 +81,17 @@ void insideDir(const char* changddirname, int depth, int s){
                 lstat(buf, &entryLinkInfo);
                 if (S_ISDIR(entryLinkInfo.st_mode)){
                 depth--;
-                insideDir(buf, depth, s);
+                insideDir(buf, depth);
                 depth++;
             }else if (S_ISREG(entryLinkInfo.st_mode)){
-                if (c == 1){
+                if (C_followSymlinksOnlyOnce == 1){
                     if (contains(pathName, visited) == 0){
                         visited = insert(pathName, visited);
-                        insideDir(buf, depth, s);
+                        insideDir(buf, depth);
                     }
                 }
             }else
-                insideDir(buf, depth, s);
+                insideDir(buf, depth);
         }
         retval = readdir_r(dir, &entry, &entryPtr);
     }
@@ -100,10 +99,9 @@ void insideDir(const char* changddirname, int depth, int s){
 
 int main(int argc, const char* argv[]) {
     
-    //хэш для просмотренный файлов
     visited = createTable(8);
     
-    int depth = 0, s = 0;
+    int depth = 0;
     for (int i = 1; i < argc; ++i){
         if (strcmp(argv[i], "-r") == 0){
             depth = atoi(argv[i+1]);
@@ -111,14 +109,14 @@ int main(int argc, const char* argv[]) {
                 depth--;
         }
         if (strcmp(argv[i], "-s")==0)
-            s = 1;
+            noS_followSymlinks = 0;
         if (strcmp(argv[i], "-c")==0){
-            s = 1;
-            c = 1;
+            noS_followSymlinks = 1;
+            C_followSymlinksOnlyOnce = 1;
         }
     }
     
-    insideDir(argv[1], depth, s);
+    insideDir(argv[1], depth);
     
     clearTable(visited);
 
