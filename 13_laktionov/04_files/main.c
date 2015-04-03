@@ -7,6 +7,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/stat.h>
+#include "hash.h"
 
 void countWords(FILE* file, char* filepath){
     int counter = 0, flag = 1;
@@ -26,34 +27,19 @@ void countWords(FILE* file, char* filepath){
     fclose(file);
 }
 
-char** visited_files;
-int vis_counter = 0, c = 0;
+//char** visited_files;
+int c = 0;
+struct Table* visited;
 
-int isVisited(char* file){// 0 -> added, 1 -> already visited
-    if (!c)
-        return 0;
-    if (vis_counter==0)
-        visited_files = (char**)malloc(sizeof(char*));
-    for (size_t i = 0; i < vis_counter; ++i){
-        if (strcmp(file, visited_files[i])==0)
-            return 1;
-    }
-    visited_files = (char**)realloc(visited_files, sizeof(char*)*vis_counter+1);
-    visited_files[vis_counter] = (char*)malloc(1024);
-    strcpy(visited_files[vis_counter], file);
-    vis_counter++;
 
-    return 0;
-}
-
-void insideDir(const char* dirname, int depth, int s){
+void insideDir(const char* changddirname, int depth, int s){
 
     DIR* dir = NULL;
     struct dirent entry;
     struct dirent *entryPtr = NULL;
     int retval = 0;
     char pathName[255];
-    dir = opendir(dirname);
+    dir = opendir(changddirname);
     if (dir == NULL)
         return;
     retval = readdir_r(dir, &entry, &entryPtr);
@@ -62,7 +48,7 @@ void insideDir(const char* dirname, int depth, int s){
             fprintf(stderr, "couldn't open something. error %d", retval);
         }
         struct stat entryInfo;
-        strcpy( pathName, dirname );
+        strcpy( pathName, changddirname );
         strcat( pathName, "/");
         strcat( pathName, entry.d_name);
         lstat(pathName, &entryInfo);
@@ -78,25 +64,33 @@ void insideDir(const char* dirname, int depth, int s){
             }else if (depth == -1)
                 insideDir(pathName, depth, s);
         }else if (S_ISREG(entryInfo.st_mode)){
-            //file
-            if (isVisited(pathName) == 0){
-                FILE* file = fopen(pathName, "r");
-                countWords(file, pathName);
+                        //file
+            
+            if (c == 1){
+                if (contains(pathName, visited) == 0){
+                    visited = insert(pathName, visited);
+                    FILE* file = fopen(pathName, "r");
+                    countWords(file, pathName);
+                }
             }
+            
         }else if (S_ISLNK(entryInfo.st_mode && s == 1)){
-            //symlink
-            char buf[255];
-            //find pathname
-            realpath(pathName, buf);
-            struct stat entryLinkInfo;
-            lstat(buf, &entryLinkInfo);
-            if (S_ISDIR(entryLinkInfo.st_mode)){
+                        //symlink
+                char buf[255];
+                realpath(pathName, buf);
+                struct stat entryLinkInfo;
+                lstat(buf, &entryLinkInfo);
+                if (S_ISDIR(entryLinkInfo.st_mode)){
                 depth--;
                 insideDir(buf, depth, s);
                 depth++;
             }else if (S_ISREG(entryLinkInfo.st_mode)){
-                if (isVisited(pathName) == 0)
-                    insideDir(buf, depth, s);
+                if (c == 1){
+                    if (contains(pathName, visited) == 0){
+                        visited = insert(pathName, visited);
+                        insideDir(buf, depth, s);
+                    }
+                }
             }else
                 insideDir(buf, depth, s);
         }
@@ -105,7 +99,10 @@ void insideDir(const char* dirname, int depth, int s){
 }
 
 int main(int argc, const char* argv[]) {
-//    
+    
+    //хэш для просмотренный файлов
+    visited = createTable(8);
+    
     int depth = 0, s = 0;
     for (int i = 1; i < argc; ++i){
         if (strcmp(argv[i], "-r") == 0){
@@ -122,6 +119,8 @@ int main(int argc, const char* argv[]) {
     }
     
     insideDir(argv[1], depth, s);
+    
+    clearTable(visited);
 
     return 0;
 }
