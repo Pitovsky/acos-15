@@ -1,285 +1,329 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#define MB 1024*1024
+#define MB 1024*1024            //Сколько выделяет за раз sbrk()
 
-
-int copy(void* from, void* where, size_t bytes)
+int min(int a, int b)
 {
-	if (bytes == 0 || from == NULL || where == NULL) return 1;
-	
-	int i; char *From, *Where;
-	From = (char*)from;
-	Where = (char*)where;
-	for (i = 0; i <= bytes; ++i)
-	{
-		 *(Where+i) = *(From+i);
-	}
-	return 0;
+    return a<b?a:b;
+}
+int copy(void* from, void* where, size_t bytes)                //Скопировать bytes байт из from в where
+{
+    if (bytes == 0 || from == NULL || where == NULL) return 1;
+
+    int i; char *From, *Where;
+    From = (char*)from;
+    Where = (char*)where;
+    for (i = 0; i < bytes; ++i)
+    {
+         *(Where+i) = *(From+i);
+    }
+    return 0;
 }
 typedef struct Block
 {
-	struct Block* next;
-	struct Block* prev;
-	void* Memory;
-	int Occupied;
-	int Size;
+    struct Block* next;
+    struct Block* prev;
+    void* memory;
+    int Occupied;
+    size_t size;
 } Block;
 typedef struct list
 {
-	struct Block* head;
-	struct Block* tail;
-	int NumOfBlocks;
+    struct Block* head;
+    int NumOfBlocks;
 } list;
-void PrintBlockInfo(Block* block)
+void PrintBlockInfo(Block* block)                             //Вывести информацию о блоке
 {
-	printf("Adress == %d\n", block);
-	printf("Block->next address == %d\n", block->next);
-	printf("Block->prev address == %d\n", block->prev);
-	printf("Memory Adress == %d\n", block->Memory);
-	printf("Occupied == %d\n", block->Occupied);
-	printf("Size == %d\n", block->Size);
+    printf("Adress == %d\n", block);
+    printf("Block->next address == %d\n", block->next);
+    printf("Block->prev address == %d\n", block->prev);
+    printf("Memory Adress == %d\n", block->memory);
+    printf("Occupied == %d\n", block->Occupied);
+    printf("size == %d\n", block->size);
 }
-int printlist(void* p)
+int printlist(void* p)                                        //Вывести весь двусвязный список
 {
-	int i = 0;
-	list* lst = (list*)p;
-	Block* block = lst->head;
-	printf("_______________________\n");
-	while (block)
-	{
-		i++;
-		printf("Number == %d\n", i);
-		PrintBlockInfo(block);
-		printf("_______________________\n");
-		block = block->next;
-	}
-	printf("NULL\n");
-	printf("************************printing list finished******************************\n");
-	return i;
+    int i = 0;
+    list* lst = (list*)p;
+    Block* block = lst->head;
+    printf("_______________________\n");
+    while (block)
+    {
+        i++;
+        printf("Number == %d\n", i);
+        PrintBlockInfo(block);
+        printf("_______________________\n");
+        block = block->next;
+    }
+    printf("NULL\n\n");
+    return i;
 }
-int CountBlocks(list* List)
+int CountBlocks(list* List)                                   //Посчитать количество блоков в списке
 {
-	Block* block = List->head;
-	int i = 0;
-	while (block)
-	{
-		i++;
-		block = block->next;
-	}
-	return i;
+    Block* block = List->head;
+    int i = 0;
+    while (block)
+    {
+        i++;
+        block = block->next;
+    }
+    return i;
 }
-void MergeBlocks(Block* block)
+Block* GetTail_l(list* List)                                  //Вернуть конец списка
 {
-	Block* temp;
-	temp = block->next;
-	block->next = temp->next;
-	if (temp->next) temp->next->prev = block;
-	block->Size += sizeof(Block) + temp->Size;
+    Block* block;
+    block = List->head;
+    while (block->next)
+        block = block->next;
+    return block;
 }
-void UniteFreeMemory(void* memory)
+Block* GetHead(Block* anyblock)                               //Вернуть начало списка из любого блока
 {
-	list* List = (list*)memory;
-	Block* block = List->head;
-	while (block && block->next)
-	{
-		if (!(block->Occupied) && !(block->next->Occupied))
-		{
-			MergeBlocks(block);
-			block = List->head;	
-			continue;
-		}
-		block = block->next;
-	}
+    if (anyblock == NULL) return NULL;
+    while (anyblock->prev)
+        anyblock = anyblock->prev;
+    return anyblock;
 }
-void* CreateNewBlock(Block* tail)
+Block* GetTail(Block* anyblock)                               //Вернуть конец списка
 {
-	Block* temp = sbrk(MB);
-	if (!temp) return NULL;
-	tail->next = temp;
-	
-	temp->prev = tail;
-	temp->next = NULL;
-	temp->Memory = (void*)temp + sizeof(Block);
-	temp->Occupied = 0;
-	temp->Size = MB - sizeof(Block);
-	return temp;
+    if (anyblock == NULL) return NULL;
+    while (anyblock->next)
+        anyblock = anyblock->next;
+    return anyblock;
 }
-void* InitializeMemory(void **mem)
+list* GetList(Block* anyblock)                                //Вернуть указатель на список из любого блока
 {
-	void *p;
-		
-	p = sbrk(MB);										//Выделяем память
-		
-	list* memory = (list*)p;							//Указатель на двусвязный список блоков
-	Block* head = (Block*)(p + sizeof(list));			//Указатель на первый головной блок
-		
+    return (list*)((void*)GetHead(anyblock) - sizeof(list));
+}
+void MergeBlocks(Block* block)                                //Слить блоки block и block->next
+{
+    Block* temp;
+    temp = block->next;
+    block->next = temp->next;
+    if (temp->next) temp->next->prev = block;
+    block->size += sizeof(Block) + temp->size;                //Объединить размеры
+}
+void UniteFreeMemory(list* memory)                            //Объединить все свободные соседние куски памяти в списке
+{
+    list* List = memory;
+    Block* block = List->head;
+    while (block && block->next)                              //Слияние идет если два соседних существуют
+    {
+        if (!(block->Occupied) && !(block->next->Occupied))   //И оба не заняты
+        {
+            MergeBlocks(block);                               //Тогда сливаем их
+            continue;
+        }
+        block = block->next;
+     }
+}
+void* CreateNewBlock(Block* tail)                             //Создать новый блок с помощью  sbrk();
+{
+    Block* temp = sbrk(MB);
+    if (!temp) return NULL;
+
+    tail->next = temp;                                        //Вставка блока в конец двусвязного списка
+
+    temp->prev = tail;
+    temp->next = NULL;
+    temp->memory = (void*)temp + sizeof(Block);
+    temp->Occupied = 0;
+    temp->size = MB - sizeof(Block);
+
+    return temp;
+}
+void* InitializeMemory(void **mem)                      //Если память не выделялась, то выделить её и создать список
+{
+    void *p;
+
+    p = sbrk(MB);										//Выделяем память
+
+    list* memory = (list*)p;							//Указатель на двусвязный список блоков
+    Block* head = (Block*)(p + sizeof(list));			//Указатель на первый головной блок
+
 //Инициализация двусвязного списка
-	memory->NumOfBlocks = 1;
-	memory->head = head;
-	memory->tail = head;
+    memory->NumOfBlocks = 1;
+    memory->head = head;
 //Конец
-		
+
 //Инициализация первого блока памяти
-	head->next = NULL;
-	head->prev = NULL;
-	head->Memory = (void*)head + sizeof(Block);
-	head->Occupied = 0;
-	head->Size = MB - sizeof(list) - sizeof(Block);
+    head->next = NULL;
+    head->prev = NULL;
+    head->memory = (void*)head + sizeof(Block);
+    head->Occupied = 0;
+    head->size = MB - sizeof(list) - sizeof(Block);
 //Конец
-	
-	printf("Initializing:\n");
-	printf("List address(sbrk) == %d\n", memory);
-	printf("Head address == %d\n", head);
-	printf("Head->memory == %d\n", head->Memory);
-	printf("Head->size == %d\n", head->Size);
-	
-	*mem = p;
-	return p;
+/*
+    printf("Initializing:\n");
+    printf("List address(sbrk) == %d\n", memory);
+    printf("Head address == %d\n", head);
+    printf("Head->memory == %d\n", head->memory);
+    printf("Head->size == %d\n", head->size);
+*/
+    *mem = p;
+    return p;
 }
 Block* SplitBlock(Block* curr, size_t bytes)
 {
-	if (curr->Size < bytes + sizeof(Block)) 	//Если памяти в старом блоке слишком мало
-	{
-		printf("Not enough memory for split :(\n");
-		return NULL;							//для нового, то блок не делить
-	}
-	if (curr->Size == bytes + sizeof(Block))
-	{
-		printf("Not enough memory for split but enough for data.\n");
-		return curr;
-	}
-		
-	Block* new 	= curr->Memory + bytes; 		//Засунуть новый блок после выделенной памяти
-	new->next 	= curr->next;
-	new->prev 	= curr;
-	new->Memory = (void*)new + sizeof(Block);
-	new->Occupied = 0;
-	new->Size 	= curr->Size - sizeof(Block) - bytes;
-	
-	curr->next = new;	//Следующий это новый
-	curr->Size = bytes;	//Размер текущего, уменьшенного до нужного размера блока становится равным bytes
-	
-	return new;
+    if (curr->size < bytes) 	//Если памяти в старом блоке слишком мало
+    {
+        printf("Not enough memory for split :(\n");
+        return NULL;							//для нового, то блок не делить
+    }
+    if (curr->size >= bytes && curr->size <= bytes + sizeof(Block) && curr != GetTail(curr))
+    {
+        printf("Not enough memory for split but enough for data.\n");
+        return curr;
+    }
+
+    Block* newblock = curr->memory + bytes;                 //Засунуть новый блок после выделенной памяти
+    newblock->next       = curr->next;
+    newblock->prev       = curr;
+    newblock->memory     = (void*)newblock + sizeof(Block);
+    newblock->Occupied   = 0;
+    newblock->size       = curr->size - sizeof(Block) - bytes;
+
+    curr->next = newblock;	//Следующий это новый
+    curr->size = bytes;	//Размер текущего, уменьшенного до нужного размера блока становится равным bytes
+
+    return newblock;
 }
 Block* FindAndSplitFreeBlock(list* mem, size_t bytes)
 {
-	Block* block;
-	block = mem -> head;
-	while (block != NULL)
-	{
-		if ((block->Size >= bytes) && (!block->Occupied))
-		{
-			if (SplitBlock(block, bytes))
-				return block;
-			else
-				return NULL;
-		}
-		block = block->next;
-	}
-	return NULL;
+    Block* block;
+    block = mem -> head;
+    while (block != NULL)
+    {
+        if ((block->size >= bytes) && (!block->Occupied))
+        {
+            if (SplitBlock(block, bytes))
+                return block;
+            else
+                return NULL;
+        }
+        block = block->next;
+    }
+    return NULL;
+}
+void* my_realloc(void* mem, size_t newsize)
+{
+    Block* result;
+    Block* block = mem - sizeof(Block);
+    Block* temp, *tail = GetTail(block);
+    list* List = GetList(block);
+    block->Occupied = 0;
+    temp = FindAndSplitFreeBlock(List, newsize);        //Найти подходящий блок, разделить его и вернуть пользователю
+    if (temp)
+    {
+        copy(block->memory, temp->memory, min(block->size, newsize));
+        result = temp;
+        temp->Occupied = 1;
+    }
+    else
+    {
+        int i = 1;
+        Block* newmem = CreateNewBlock(tail);
+        while (newsize > MB*(i) && newmem)      //Иначе, если подходящий блок есть, можно выделять, пока тебе не хватит
+        {
+            newmem = CreateNewBlock(newmem);
+            i++;
+        }
+        UniteFreeMemory(List);                  //Объединить все пустые блоки
+        if (!newmem)
+            return NULL;
+        result = FindAndSplitFreeBlock(List, newsize); //Найти и разделить блок, в данном случае последний
+        result->Occupied = 1;
+    }
+    return result->memory;
 }
 void my_free(void* memory)
 {
-	Block* block = memory - sizeof(Block);
-	block->Occupied = 0;
-	while (block->prev) 
-		block = block->prev;					//Пришли в голову списка
-	memory = (void*)block - sizeof(list);		//В порядке, проверено
-	UniteFreeMemory(memory);
-	//printlist(memory);
+    Block* block = memory - sizeof(Block);
+    block->Occupied = 0;
+    while (block->prev)
+        block = block->prev;					//Пришли в голову списка
+    memory = (void*)block - sizeof(list);		//В порядке, проверено
+    UniteFreeMemory(memory);                    //Объединим последнюю часть
 }
 void* my_malloc(unsigned int bytes)
 {
-	void* result;
-	static void* p = NULL;				//Будет указателем на начало выделенного куска
-					
-	if (p == NULL)						//Если вдруг память раньше не выделялась
-		InitializeMemory(&p);			//Проинициализировать память
-		
+    void* result;
+    static void* p = NULL;				//Будет указателем на начало выделенного куска
 
-	list* mem = p;						//Указатель на двусвязный список
-	
-	Block* GoodBlock = NULL;
-	GoodBlock = FindAndSplitFreeBlock(mem, bytes);
-	if (GoodBlock)									//Если есть подходящий блок
-	{
-		GoodBlock->Occupied = 1;
-		result = (void*)GoodBlock->Memory;
-	}
-	else
-	{
-		void* ok = mem;
-		while(ok && !GoodBlock)			//Выделяет пользователю память до тех пор пока ему не хватит
-		{								//Ну или уже система не откажет в выделении
-			ok = CreateNewBlock(mem->tail);
-			if (ok) mem->tail = ok;
-			UniteFreeMemory(mem);
-			GoodBlock = FindAndSplitFreeBlock(mem, bytes);
-			result = GoodBlock;					
-		}
-	}
-	
-	mem->NumOfBlocks = CountBlocks(mem);
-	return result;
+    if (p == NULL)						//Если вдруг память раньше не выделялась
+        InitializeMemory(&p);			//Проинициализировать память
+
+    list* mem = p;						//Указатель на двусвязный список
+
+    Block* GoodBlock = NULL;
+    GoodBlock = FindAndSplitFreeBlock(mem, bytes);
+    if (GoodBlock)									//Если есть подходящий блок
+    {
+        GoodBlock->Occupied = 1;
+        result = (void*)GoodBlock->memory;
+    }
+    else
+    {
+        GoodBlock = GetTail_l(mem);
+        Block* temp;
+        int i = 0;
+        while(i*MB + GoodBlock->size < bytes && result) //Выделяем память до тех пор, пока ему не хватит
+        {
+            temp = CreateNewBlock(GetTail_l(mem));
+            i++;
+        }
+        if (!temp) result = NULL;
+        else
+        {
+            UniteFreeMemory(mem);                       //Объединить  свободные соседние куски памяти
+            temp = FindAndSplitFreeBlock(mem, bytes);   //Теперь памяти точно хватит, либо система отказала
+            if (temp)
+            {
+                result = temp->memory;
+                temp->Occupied = 1;
+            }
+            else
+                result = NULL;
+        }
+    }
+
+    mem->NumOfBlocks = CountBlocks(mem);
+    return result;
 }
 
 int main()
 {
-	void* List;
-	
-/*Вспомогательная информация*/
-	printf("\nsizeof(Block) == %d\n", sizeof(Block));
-	printf("sizeof(Block*) == %d\n", sizeof(Block*));
-	printf("sizeof(list) == %d\n", sizeof(list));
-	printf("sizeof(list*) == %d\n", sizeof(list*));
-	printf("\n\n");
-/***********************************************************************/	
+    void* List;
+    int n;
+
+/***********************************************************************/
 /*Первый malloc*/
-	int n;
-	scanf("%d", &n);
-	printf("Required Memory == %d\n\n", n*(int)sizeof(int));
-	int* z = (int*)my_malloc(n*sizeof(int));	
-	List = (void*)z - sizeof(Block) - sizeof(list);				//Здесь находится двусвязный список
-	if (z == NULL)
-	{
-		printf("z == NULL");
-		return 0;
-	}
-	z[0] = 99999;
-	printf("Printf z == %d, OK\n", z);
+    scanf("%d", &n);
+    char* a = (char*)my_malloc(n*sizeof(char));
+    List = (void*)a - sizeof(Block) - sizeof(list);                        //Здесь находится двусвязный список
 /***********************************************************************/
 /*Второй malloc*/
-	scanf("%d", &n);
-	printf("Required Memory == %d\n", n*(int)sizeof(int));
-	int* q = (int*)my_malloc(n*sizeof(int));
-	if (q == NULL)
-	{
-		printf("q == NULL");
-		return 0;
-	}
-	q[0] = 898989;
-	printf("Printf q == %d, OK\n", q);
-/***********************************************************************/
-/*Freing memory*/
-	my_free(z);
-	my_free(q);
+    scanf("%d", &n);
+    char* b = (char*)my_malloc(n*sizeof(char));
 /***********************************************************************/
 /*Третий malloc*/
-	scanf("%d", &n);
-	printf("Required Memory == %d\n", n*(int)sizeof(int));
-	int* w = (int*)my_malloc(n*sizeof(int));
-	if (w == NULL)
-	{
-		printf("w == NULL");
-		return 0;
-	}
-	w[0] = 898989;
+    scanf("%d", &n);
+    char* c = (char*)my_malloc(n*sizeof(char));
 /***********************************************************************/
-/*Freing*/
-	my_free(w);
+/*Четвёртый malloc*/
+    scanf("%d", &n);
+    char* d = (char*)my_malloc(n*sizeof(char));
 /***********************************************************************/
-	
-	printlist(List);
-	return 0;
+    scanf("%d", &n);
+    my_realloc(d, n);
+    my_free(a);
+    my_free(b);
+    my_free(c);
+    my_free(d);
+    printlist(List);
+/***********************************************************************/
+
+/***********************************************************************/
+    return 0;
 }
