@@ -1,31 +1,39 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#define HT_H
+
+
 typedef char* key;
 
-struct table
+typedef struct data
+{
+	key KEY;
+	int my_data;
+} data;
+typedef struct node
+{
+	struct node* next;
+	struct node* previous;
+	struct data* input;
+} node;
+typedef struct table
 {
 	int Size;
 	int NumberOfElements;
 	struct node** mytable;
-};
-struct node{
-	struct node* next;
-	struct node* previous;
-	struct data* input;
-};
-struct data{
-	key KEY;
-	int data;
-};
+} table;
 
 int HashU(char* s, int M);
-
-struct table* CreateTable(int tsize);
-int InsertInTheTable(struct table* Table, struct data* data);
-struct data* FindInTheTable(struct table* table, key KEY);
-int DeleteFromTable(struct table* table, key KEY);
-
-void PrintTable(struct table* table);
+table* CreateTable(int tsize);
+int InsertInTheTable(table* Table, data* Data);
+data* FindInTheTable(table* Table, key KEY);
+int DeleteFromTable(table* Table, key KEY);
+void PrintTable(table* Table);
 void PrintList(struct node* list);
 int HashU(char* s, int M);
+void ClearTable(table* Table);
+void DeleteTable(table* Table);
+int hashtest();
 
-void ClearTable(struct table* table);
-void DeleteTable(struct table* table);
+#include "HT.hpp"
