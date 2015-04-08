@@ -6,80 +6,50 @@
 #include <string.h>
 #include <fcntl.h>
 
+#define BUFSIZE 512
 #define _BSD_SOURCE
 
 extern char** environ;
 
-int pseudoInputFromBash(){
-    int input_pipes[2];
-    if (pipe(input_pipes) < 0){
-        printf("can't open pipe");
-        exit(1);
-    }
-    int sites = 0;
-    char* bufToWrite = (char*)malloc(256);
-    while (1){
-        scanf("%s", bufToWrite);
-        sites++;
-        if (strcmp(bufToWrite, "0")==0)
-            break;
-        write(input_pipes[1], bufToWrite, 256);
-    }
-    free(bufToWrite);
-    close(input_pipes[1]);
-    return input_pipes[0];
-}
-
-int isRef(size_t parseCounter, char* c){
-    if ((c[0] == '<' && parseCounter == 0) ||
-        (c[0] == 'a' && parseCounter == 1) ||
-        (c[0] == ' ' && parseCounter == 2) ||
-        (c[0] == 'h' && parseCounter == 3) ||
-        (c[0] == 'r' && parseCounter == 4) ||
-        (c[0] == 'e' && parseCounter == 5) ||
-        (c[0] == 'f' && parseCounter == 6) ||
-        (c[0] == '=' && parseCounter == 7) ||
-        (c[0] == '"' && parseCounter == 8) ||
-        (c[0] == '"' && parseCounter == 9))
-    {
-        return 1;
-    }
-    return 0;
-}
-
 int main(int argc, char* argv[]) {
-    
+    setbuf(stdout, 0);
     ///то, что делает баш<
     int input_pipe;
     if((input_pipe = open(getenv("FIFONAME"), O_RDONLY)) < 0){
-        printf("error opening fifo");
+        printf("error opening fifo\n");
         exit(1);
     }
     //>
-    //int input_pipe = pseudoInputFromBash();
     
     int bashPipe[2];// общение баша с программой
     pipe(bashPipe);
     fcntl(bashPipe[0], F_SETFL, O_NONBLOCK);
     fcntl(bashPipe[1], F_SETFL, O_NONBLOCK);
     
-    char currentURL[256]; // текущий считываемый url
+    char* currentURL = (char*)malloc(256*sizeof(char)+2); // текущий считываемый url
     char* args[] = {"/usr/bin/curl", currentURL, "--silent", NULL};
     char* c = (char*)malloc(2*sizeof(char));
     char* parsing = (char*)malloc(sizeof(char)*2);
     strcpy(parsing, "");
-    size_t parseSize = 0;
-    size_t parseCounter = 0;
 
-    char* charCurrentURL = (char*)malloc(2*sizeof(char));
-    charCurrentURL[0] = 0;
-    size_t errPipe;
+    char* buf = (char*)malloc(BUFSIZE + 2);
+    char* urls = (char*)malloc(2*sizeof(char));
+    char* bashInp = (char*)malloc(2*sizeof(char));
+
+    strcpy(urls, "");
+    size_t currentAlloc = 2;
+    while (read(input_pipe, buf, BUFSIZE) > 0){
+        currentAlloc += BUFSIZE;
+        urls = realloc(urls, currentAlloc);
+        strcat(urls, buf);
+    }
+    currentAlloc = 2;
+    char* token;
+    token = strtok(urls, "\n");
     while (1){
-        strcpy(currentURL, "");
-        while (((errPipe = read(input_pipe, &(*charCurrentURL), 1)) > 0) && (charCurrentURL[0] != '\n'))
-            strcat(currentURL, charCurrentURL);
-        if (errPipe <= 0)
+        if (token == NULL)
             break;
+        strcpy(currentURL, token);
         pid_t pid = fork();
         if (pid == 0){
             argv[1] = currentURL;
@@ -93,38 +63,41 @@ int main(int argc, char* argv[]) {
         else{
             printf("\n\n-----SITE:%s\n", currentURL);
             while(wait(0) > 0);
-            while (read(bashPipe[0], &(*c), 1) > 0){
-                //printf("%c", c[0]);
-                if (isRef(parseCounter, c) == 1){
-                    ++parseCounter;
-                    parseSize = 0;
-                }
-                else if (parseSize == 0)
-                    parseCounter = 0;
-                    //++parseCounter;
-                if (parseCounter == 9){
-                    parseSize++;
-                    parsing = realloc(parsing, parseSize+2);
 
-                    if (c[0] != '"'){
-                        strcat(parsing, c);
+            strcpy(bashInp, "");
+            while(read(bashPipe[0], buf, BUFSIZE) > 0){
+                currentAlloc += BUFSIZE;
+                bashInp = realloc(bashInp, currentAlloc);
+                strcat(bashInp, buf);
+            }
+            size_t i = 0;
+            while (bashInp != NULL){
+                bashInp = strstr(bashInp, "<a href=\"");
+                if (bashInp == NULL)
+                    break;
+                bashInp += strlen("<a href=\"");
+                if (strncmp(bashInp, "http", strlen("http")) == 0){
+                    while ((bashInp[i] != '"')){
+                        printf("%c", bashInp[i]);
+                        ++i;
+                        if (i == strlen(bashInp))
+                            break;
                     }
-                }
-                if (parseCounter == 10){
-                    parseCounter = 0;
-                    parseSize = 0;
-                    /* не совсем понял: нужно выводить только http(s) ссылки
-                        или вообще всё, что стоит в теге href. Во втором случае надо
-                        просто закомментить if ниже, оставив printf
-                        */
-                    if (strncmp(parsing, "http://", 7) == 0 || strncmp(parsing, "https://", 8) == 0)
-                            printf("%s\n", parsing);
-                    strcpy(parsing, "");
+                    printf("\n");
+                    bashInp += i;
+                    i = 0;
                 }
             }
+            bashInp = realloc(bashInp, 2);
+            currentAlloc = 2;
         }
+        token = strtok(NULL, "\n");
     }
     free(c);
     free(parsing);
+    free(token);
+    free(currentURL);
+    free(urls);
+    free(buf);
     return 0;
 }
