@@ -56,6 +56,7 @@ void process_dir(char* name, short flag_r, short flag_s, int count_space)
     FILE* h;
     sprintf(final, "%s/%s", name, a->d_name);
     lstat(final, &status);
+    int size_val;
     while (a != NULL)
     {
         if ((S_ISDIR(status.st_mode) && (strcmp(a->d_name, ".") != 0) && (strcmp(a->d_name, "..") != 0)))
@@ -90,9 +91,10 @@ void process_dir(char* name, short flag_r, short flag_s, int count_space)
                 printf("%s \033[32mlink\033[0m -> %s  ", a->d_name, link);
                 if (flag_s == 0)
                 {
-                    if (size(link) >= 0)
+                    size_val = size(link);
+                    if (size_val >= 0)
                     {
-                        printf("-- \033[36m%d\033[0m",size(link));
+                        printf("-- \033[36m%d\033[0m",size_val);
                     }
                 }
                 printf("\n");
