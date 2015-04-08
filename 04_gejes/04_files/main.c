@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
 
@@ -13,7 +15,7 @@ int strToInt(char* str)
     }
     return ret;
 }
-int outWordDir(char* path, int recDeep)
+int outWordDir(char* path, int recDeep, int jumpLink)
 {
     int i = 0;
     char word[262143];
@@ -27,12 +29,20 @@ int outWordDir(char* path, int recDeep)
         if (recDeep != 0 && chdir(namelist[i]->d_name) == 0)
         {
             getcwd(path, sizeof(path));
-            outWordDir(path, recDeep - 1);
+            outWordDir(path, recDeep - 1, jumpLink);
             chdir("..");
             getcwd(path, sizeof(path));
         }
         else
         {
+            struct stat st;
+            lstat(namelist[i]->d_name,&st);
+            if (S_ISLNK(st.st_mode))
+            {
+                printf("%s - symlink\n", namelist[i]->d_name);
+                if (jumpLink == 0)
+                    continue;
+            }
             FILE* fin = fopen(namelist[i]->d_name, "r");
             if (fin == NULL)
             {
@@ -52,6 +62,7 @@ int main(int argc, char** argv)
 {
     char path[255];
     int recDeep = 0;
+    int jumpLink = 1;
     memset(path, 0, 255);
     strcpy(path, ".");
     int i = 0;
@@ -63,9 +74,13 @@ int main(int argc, char** argv)
         if (strcmp(argv[i], "-r") == 0)
             recDeep = strToInt(argv[i + 1]) - 1;
 
+    for (i = 0; i < argc; ++i)
+        if (strcmp(argv[i], "-s") == 0)
+            jumpLink = 0;
+
     chdir(path);
     printf("Ok, I will try it. %d recoursion levels?\n", recDeep);
-    outWordDir(path, recDeep);
+    outWordDir(path, recDeep, jumpLink);
 
     return 0;
 }
