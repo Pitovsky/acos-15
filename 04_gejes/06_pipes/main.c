@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -8,7 +9,7 @@
 int main(int argc, char** argv)
 {
     char* src = getenv("URLS_SRC");
-    printf("finded pipe: %s\n", src);
+    printf("found a pipe: %s\n", src);
 
     FILE* srcPipe = open(src, O_RDONLY);
     if (srcPipe == NULL)
@@ -19,7 +20,7 @@ int main(int argc, char** argv)
     }
 
     char url[512];
-    while (read(srcPipe, url, 512) != 0)
+    while (read(srcPipe, url, 512) != 0 && strcmp(url, "exit") != 0)
     {
         printf("Site: %s\n", url);
         int htmlPipe[2];
@@ -27,40 +28,45 @@ int main(int argc, char** argv)
         pid_t child = fork();
         if (child != 0)
         {
-            char htmlCode[1024];
             close(htmlPipe[1]);
-            printf("HTML CODE FOR IT:\n");
-            while (read(htmlPipe[0], htmlCode, 1024) != 0)
+            char newch[1];
+            int correctTag = 0;
+
+            while (read(htmlPipe[0], newch, 1) != 0)
             {
-                //printf(":%s\n", htmlCode);
-                int i = 4;
-                while (i < 512 && htmlCode[i] != 0)
+                if (correctTag == 0 && (*newch == 'h' || *newch == 'H'))
+                    ++correctTag;
+                else if (correctTag == 1 && (*newch == 'r' || *newch == 'R'))
+                    ++correctTag;
+                else if (correctTag == 2 && (*newch == 'e' || *newch == 'E'))
+                    ++correctTag;
+                else if (correctTag == 3 && (*newch == 'f' || *newch == 'F'))
+                    ++correctTag;
+                else if (correctTag == 4)
+                    correctTag = -1; //it is a href
+                else if (correctTag > 0)
+                    correctTag = 0; //it is not a href
+
+                if (correctTag == -2 && *newch == '"')
                 {
-                    if ((htmlCode[i - 3] == 'h' || htmlCode[i - 3] == 'H') &&
-                        (htmlCode[i - 2] == 'r' || htmlCode[i - 2] == 'R') &&
-                        (htmlCode[i - 1] == 'e' || htmlCode[i - 1] == 'E') &&
-                        (htmlCode[i] == 'f' || htmlCode[i] == 'F'))
-                    {
-                        printf("nef ref: ");
-                        while (htmlCode[i] != '"')
-                            ++i;
-                        ++i;
-                        while (htmlCode[i] != '"')
-                        {
-                            printf("%c", htmlCode[i]);
-                            ++i;
-                        }
-                        printf("\n");
-                    }
-                    ++i;
+                    correctTag = -0; //end copy link text
+                    printf("\n");
                 }
+                else if (correctTag == -1 && *newch == '"')
+                {
+                    correctTag = -2; //start copy link text
+                    printf("new ref: ");
+                }
+
+                if (correctTag == -2 && *newch != '"')
+                    printf("%c", *newch);
             }
             close(htmlPipe[0]);
         }
         else
         {
             close(htmlPipe[0]);
-            printf("starting curl...\n");
+            fprintf(stderr, "starting curl...\n");
             dup2(htmlPipe[1], 1);
             close(htmlPipe[1]);
             int code = execl("/usr/bin/curl", "/usr/bin/curl", url, NULL);
