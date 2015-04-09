@@ -70,24 +70,29 @@ int main(int argc, char* argv[]) {
                 bashInp = realloc(bashInp, currentAlloc);
                 strcat(bashInp, buf);
             }
-            size_t i = 0;
-            while (bashInp != NULL){
-                bashInp = strstr(bashInp, "<a href=\"");
-                if (bashInp == NULL)
-                    break;
-                bashInp += strlen("<a href=\"");
-                if (strncmp(bashInp, "http", strlen("http")) == 0){
-                    while ((bashInp[i] != '"')){
-                        printf("%c", bashInp[i]);
-                        ++i;
-                        if (i == strlen(bashInp))
-                            break;
+            pid_t pidParse = fork();
+            if (pidParse==0){
+                size_t i = 0;
+                while (bashInp != NULL){
+                    bashInp = strstr(bashInp, "<a href=\"");
+                    if (bashInp == NULL)
+                        break;
+                    bashInp += strlen("<a href=\"");
+                    if (strncmp(bashInp, "http", strlen("http")) == 0){
+                        while ((bashInp[i] != '"')){
+                            printf("%c", bashInp[i]);
+                            ++i;
+                            if (i == strlen(bashInp))
+                                break;
+                        }
+                        printf("\n");
+                        bashInp += i;
+                        i = 0;
                     }
-                    printf("\n");
-                    bashInp += i;
-                    i = 0;
                 }
+                exit(0);
             }
+            while(wait(0) > 0);
             bashInp = realloc(bashInp, 2);
             currentAlloc = 2;
         }
