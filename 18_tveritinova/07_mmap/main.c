@@ -156,17 +156,17 @@ int main(int argc, char** argv)
     int fd = open(argv[1], O_RDWR | O_CREAT, S_IRWXU | S_IRWXG | S_IRWXO);
     if (fd == -1)
     {
-        //fd = creat(argv[1], O_RDWR | O_CREAT);
-        printf("created file\n");
+        fprintf(stderr, "can't do open\n");
     }
     struct stat filestat;
     fstat(fd, &filestat);
-    printf("%lld\n", filestat.st_size);
+    //printf("%lld\n", filestat.st_size);
     if ((argc == 3)  && (filestat.st_size == 0))
     {
         lseek(fd, 0, SEEK_END);
         lseek(fd, col_cnt * sizeof(double) - 1, SEEK_CUR);
         write(fd, "", 1);
+        printf("allocated %d byte\n", col_cnt * sizeof(double));
     }
     if (argc == 4)
     {
@@ -187,17 +187,21 @@ int main(int argc, char** argv)
         row_cnt = filestat.st_size / (col_cnt * sizeof(double));
         if (row_cnt == 0)
         {
-            lseek(fd, 0, SEEK_END);
-            lseek(fd, sizeof(double) * col_cnt - filestat.st_size - 1, SEEK_CUR);
-            write(fd,"", 1);
-            printf("на хотя бы одну стороку не хватало памяти, было выделено %lld байт\n", sizeof(double) * col_cnt - filestat.st_size);
-            row_cnt = filestat.st_size / (col_cnt * sizeof(double));
+            row_cnt = 1;
+        }
+        if (row_cnt * col_cnt * sizeof(double) > filestat.st_size)
+        {
+            printf("allocated %lld byte\n", row_cnt * col_cnt * sizeof(double) - filestat.st_size);
+        }
+        if (row_cnt * col_cnt * sizeof(double) < filestat.st_size)
+        {
+            printf("free %lld byte\n", filestat.st_size - row_cnt * col_cnt * sizeof(double));
         }
         ftruncate(fd, row_cnt * col_cnt * sizeof(double));
     }
-    printf("%d %d\n", col_cnt, row_cnt);
+    printf("column count: %d    row count: %d\n", col_cnt, row_cnt);
     fstat(fd, &filestat);
-    printf("%lld\n",filestat.st_size);
+    printf("file size: %lld\n",filestat.st_size);
     double* file_addr = (double*) mmap(0, filestat.st_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
     if (file_addr == -1)
     {
