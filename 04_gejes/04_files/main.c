@@ -6,6 +6,7 @@
 #include <sys/types.h>
 #include <dirent.h>
 #include <string.h>
+#include "../01_hashTable/hashTable.c"
 
 int strToInt(char* str)
 {
@@ -18,8 +19,7 @@ int strToInt(char* str)
     return ret;
 }
 
-char* visitedLinks[1000];
-int visitedLinkCount = 0;
+struct Table* visitedLink;
 
 int outWordDir(char* unabpath, int recDeep, int jumpLink)
 {
@@ -58,21 +58,17 @@ int outWordDir(char* unabpath, int recDeep, int jumpLink)
                     continue;
                 if (jumpLink == -1)
                 {
-                    int j;
-                    int visited = 0;
-                    for (j = 0; j < visitedLinkCount; ++j)
-                        if (strcmp(visitedLinks[j], realPath) == 0)
-                            ++visited;
-                    if (visited != 0)
+                    int visitedThis = 0;
+                    int* tmp = &visitedThis;
+                    if (readElement(visitedLink, realPath, &tmp) != 0)
                     {
                         printf("and I visited it, see upper\n");
                         continue;
                     }
                     else
                     {
-                        visitedLinks[visitedLinkCount] = (char*)malloc(strlen(realPath)*sizeof(char));
-                        strcpy(visitedLinks[visitedLinkCount], realPath);
-                        ++visitedLinkCount;
+                        visitedThis = 1;
+                        writeElement(visitedLink, realPath, &visitedThis);
                     }
                 }
             }
@@ -115,12 +111,13 @@ int main(int argc, char** argv)
         if (strcmp(argv[i], "-s") == 0)
             jumpLink = 0;
 
+    visitedLink = createTable(1000);
+
     chdir(path);
     printf("Ok, I will try it. %d recoursion levels?\n", recDeep);
     outWordDir(path, recDeep, jumpLink);
 
-    for (i = 0; i < visitedLinkCount; ++i)
-        free(visitedLinks[i]);
+    clearTable(visitedLink);
 
     return 0;
 }
