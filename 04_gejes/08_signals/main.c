@@ -20,6 +20,7 @@ void sigus()
 {
     lastSig = 2;
 }
+
 int main(int argc, char** argv)
 {
     char func[3];
@@ -68,7 +69,10 @@ int main(int argc, char** argv)
             }
             else if (strcmp(func, "ln") == 0 || strcmp(func, "log") == 0)
             {
-                nowDiff = 300;
+                if (i == 0)
+                    nowDiff = 0;
+                else
+                    nowDiff = mione(i + 1)*nowFactorial*1.0/(i*pow(start, i));
             }
             coeffs[i] = nowDiff/nowFactorial;
         }

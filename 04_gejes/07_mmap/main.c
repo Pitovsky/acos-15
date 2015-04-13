@@ -10,13 +10,12 @@
 int newFile(const char* fileName, int size)
 {
     FILE* newFile = fopen(fileName, "wb");
-    int fileSize = sizeof(double)*size;
-    double* zeroArr = (double*)malloc(fileSize);
-    memset(zeroArr, 0, fileSize);
-    fwrite(zeroArr, sizeof(double), fileSize, newFile);
+    double* zeroArr = (double*)malloc(size);
+    memset(zeroArr, 0.0, size);
+    fwrite(zeroArr, sizeof(double), size, newFile);
     free(zeroArr);
     fclose(newFile);
-    return fileSize;
+    return size*sizeof(double);
 }
 int main(int argc, char** argv)
 {
@@ -45,6 +44,7 @@ int main(int argc, char** argv)
     {
         rowCount = fileSize/(sizeof(double)*colCount);
     }
+    printf("open matrix: %d x %d\n", colCount, rowCount);
 
     if (fileSize < sizeof(double)*colCount*rowCount)
     {
@@ -126,14 +126,23 @@ int main(int argc, char** argv)
         }
         else if (strcmp(com, "transpose") == 0)
         {
+            int i = 0;
+            int j = 0;
             if (colCount != rowCount)
             {
-                printf("Transpose failed - matrix is not square\n");
+                double tmpMtx[colCount][rowCount];
+                for (i = 0; i < colCount; ++i)
+                    for (j = 0; j < rowCount; ++j)
+                        tmpMtx[i][j] = *(beginPos + j*colCount + i);
+                int tmp = colCount;
+                colCount = rowCount;
+                rowCount = tmp;
+                for (i = 0; i < rowCount; ++i)
+                    for (j = 0; j < colCount; ++j)
+                        *(beginPos + i*colCount + j) = tmpMtx[i][j];
             }
             else
             {
-                int i = 0;
-                int j = 0;
                 for (i = 0; i < rowCount; ++i)
                     for (j = i; j < colCount; ++j)
                     {
