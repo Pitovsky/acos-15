@@ -9,7 +9,7 @@
 #include <math.h>
 
 const unsigned DELAY_MS = 1;
-int exit_flag = 0;
+sig_atomic_t exit_flag = 0;
 
 void sigint_handler(int sig)
 {
@@ -97,13 +97,13 @@ void calc_cos(double start, double step, int deep)
 
     while (exit_flag == 0)
     {
-        double sum = sin(start);
+        double sum = cos(start);
         double fact = 1;
         int i;
 
         for (i = 1; i <= deep; ++i)
         {
-            sum += sin(start + M_PI_2 * i) * pow(delta, i) / fact;
+            sum += cos(start + M_PI_2 * i) * pow(delta, i) / fact;
             fact *= (i + 1);
         }
 
@@ -137,7 +137,7 @@ void run_calc(char* funct, double start, double step, int deep)
 
     if (strcmp(funct, "cos") == 0)
     {
-        calc_sin(start, step, deep);
+        calc_cos(start, step, deep);
         return;
     }
 
