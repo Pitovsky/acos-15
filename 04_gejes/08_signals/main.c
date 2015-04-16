@@ -21,6 +21,44 @@ void sigus()
     lastSig = 2;
 }
 
+void createCoeffs(const char* func, double start, double step, int deep, double* coeffs)
+{
+    int nowFactorial = 1;
+    double nowDiff = 0;
+    int i;
+    for (i = 0; i < deep; ++i)
+    {
+        if (i > 1)
+            nowFactorial *= i;
+        if (strcmp(func, "sin") == 0)
+        {
+            if (i % 2 == 0)
+                nowDiff = mione(i/2)*sin(start);
+            else
+                nowDiff = mione(i/2)*cos(start);
+        }
+        else if (strcmp(func, "cos") == 0)
+        {
+            if (i % 2 == 0)
+                 nowDiff = mione(i/2 + 1)*cos(start);
+            else
+                 nowDiff = mione(i/2 + 1)*sin(start);
+        }
+        else if (strcmp(func, "exp") == 0)
+        {
+            nowDiff = exp(start);
+        }
+        else if (strcmp(func, "ln") == 0 || strcmp(func, "log") == 0)
+        {
+            if (i == 0)
+                nowDiff = 0;
+            else
+                nowDiff = mione(i + 1)*nowFactorial*1.0/(i*pow(start, i));
+        }
+        coeffs[i] = nowDiff/nowFactorial;
+    }
+}
+
 int main(int argc, char** argv)
 {
     char func[3];
@@ -35,7 +73,7 @@ int main(int argc, char** argv)
     while (1)
     {
         scanf("%s", func);
-        if (strcmp(func, "end") == 0)
+        if (strcmp(func, "end") == 0 || strcmp(func, "exit") == 0)
             break;
         scanf("%lf", &start);
         scanf("%lf", &step);
@@ -43,39 +81,8 @@ int main(int argc, char** argv)
         ++deep;
 
         coeffs = (double*)malloc(deep*sizeof(double));
-        int nowFactorial = 1;
-        double nowDiff = 0;
-        for (i = 0; i < deep; ++i)
-        {
-            if (i > 1)
-                nowFactorial *= i;
-            if (strcmp(func, "sin") == 0)
-            {
-                if (i % 2 == 0)
-                    nowDiff = mione(i/2)*sin(start);
-                else
-                    nowDiff = mione(i/2)*cos(start);
-            }
-            else if (strcmp(func, "cos") == 0)
-            {
-                if (i % 2 == 0)
-                    nowDiff = mione(i/2 + 1)*cos(start);
-                else
-                    nowDiff = mione(i/2 + 1)*sin(start);
-            }
-            else if (strcmp(func, "exp") == 0)
-            {
-                nowDiff = exp(start);
-            }
-            else if (strcmp(func, "ln") == 0 || strcmp(func, "log") == 0)
-            {
-                if (i == 0)
-                    nowDiff = 0;
-                else
-                    nowDiff = mione(i + 1)*nowFactorial*1.0/(i*pow(start, i));
-            }
-            coeffs[i] = nowDiff/nowFactorial;
-        }
+
+        createCoeffs(func, start, step, deep, coeffs);
 
         printf("function:\n");
         if (coeffs[0] != 0)
