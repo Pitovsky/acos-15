@@ -4,6 +4,7 @@
 #include <math.h>
 #include <unistd.h>
 #include <signal.h>
+#include <limits.h>
 
 #define pi 3.14159265359
 struct sigaction act;
@@ -11,70 +12,80 @@ int flag = 1;
 
 void countExp(double start, double step, int deep) {
     
-    double delta = step;
-    double sum = sum = exp(start);
-    int k = 1;
-    double add;
+    double* coeffs = (double*)malloc((deep+1)*sizeof(double));
+    coeffs[0] = exp(start);
+    long long k = 1;
     
+    for (int i = 1; i <= deep; ++i){
+        coeffs[i] = (exp(start)/k);
+        k *= (k+1);
+    }
+    
+    double sum = 0;
+    double delta = step;
     while(flag) {
-        for (int i = 1; i <= deep; ++i){
-            add = (exp(start)/k)*pow(delta, i);
-            sum += add;
-            k*=(k+1);
-        }
+        for (int i = 0; i <= deep; ++i)
+            sum += pow(delta, i)*coeffs[i];
         printf("sum: %lf\n", sum);
-        k = 1;
+        sum = 0;
         delta += step;
         sleep(1);
     }
+    free(coeffs);
     flag = 1;
 }
 
 void countLn(double start, double step, double deep) {
     
-    double delta = step;
-    double sum = log(start);
-    double add;
+    double* coeffs = (double*)malloc((deep+1)*sizeof(double));
+    coeffs[0] = log(start);
 
+    for (int i = 1; i <= deep; ++i){
+        coeffs[i] = 1/(pow(start, i)*i);
+    }
+    
+    double sum = 0;
+    double delta = step;
     while(flag) {
-        for (int i = 1; i <= deep; ++i) {
-            add = 1/(pow(start, i)*i)*pow(delta, i);
-            if (i%2==0)
-                add *= (-1);
-            sum += add;
-        }
+        for (int i = 0; i <= deep; ++i)
+            sum += pow(delta, i)*coeffs[i];
         printf("sum: %lf\n", sum);
-        sum = log(start);
+        sum = 0;
         delta += step;
         sleep(1);
     }
+    free(coeffs);
     flag = 1;
 }
 
 void countSin(double start, double step, double deep) {
-    
+
+    double* coeffs = (double*)malloc((deep+1)*sizeof(double));
+    coeffs[0] = sin(start);
+    long long k = 1;
+
+    for (int i = 1; i <= deep; ++i){
+        if (i%2 == 0)
+            coeffs[i] = sin(start)/k;
+        else
+            coeffs[i] = cos(start)/k;
+        if (i%4 == 2 || i%4 == 3)
+            coeffs[i] *= (-1);
+        k *= (k+1);
+    }
+
+    double sum = 0;
     double delta = step;
-    double sum = sin(start);
-    int k = 1;
-    double add;
     
     while(flag) {
-        for (int i = 1; i <= deep; ++i) {
-            if (i%2 == 0)
-                add = (sin(start)/k)*pow(delta, i);
-            else
-                add = (cos(start)/k)*pow(delta, i);
-            if (i%4 == 2 || i%4 == 3)
-                add *= (-1);
-            sum += add;
-            k*=(k+1);
-        }
+        for (int i = 0; i <= deep; ++i)
+            sum += pow(delta, i)*coeffs[i];
         printf("sum: %lf\n", sum);
-        sum = sin(start);
-        k = 1;
+        sum = 0;
         delta += step;
         sleep(1);
     }
+    free(coeffs);
     flag = 1;
 }
 
