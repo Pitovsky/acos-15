@@ -79,19 +79,21 @@ struct str* getStringsPositions(char* file){
 int main(int argc, const char * argv[]) {
     semFirst = dispatch_semaphore_create(1);
     semThird = dispatch_semaphore_create(1);
-    int forksCounter = 4;
+    int forksCounter = (int)argv[2];
+    char* filepath = (char*)argv[1];
     
-    int secondPageFile = shm_open("/Users/lokotochek/Documents/proga/parallel/parallel/test.txt", O_RDWR);
+    int secondPageFile = shm_open(filepath, O_RDWR);
     
     struct stat fileInfo;
-    lstat("/Users/lokotochek/Documents/proga/parallel/parallel/test.txt", &fileInfo);
+    lstat(filepath, &fileInfo);
     char* text = (char*)mmap(NULL, fileInfo.st_size, PROT_READ, MAP_SHARED, secondPageFile, 0);
     struct str* stringsPositions = getStringsPositions(text);
-    int firstPageFile = shm_open("/Users/lokotochek/Documents/proga/parallel/parallel/first_page.txt", O_RDWR | O_CREAT);
+    int firstPageFile = shm_open("first_page.txt", O_RDWR | O_CREAT);
     write(firstPageFile, stringsPositions, numberOfStrings*sizeof(struct str));
+    
     struct str* first = mmap(NULL, numberOfStrings*sizeof(struct str), PROT_READ | PROT_WRITE, MAP_SHARED, firstPageFile, 0);
     
-    int thirdPageFile = shm_open("/Users/lokotochek/Documents/proga/parallel/parallel/first_page.txt", O_RDWR | O_CREAT);
+    int thirdPageFile = shm_open("first_page.txt", O_RDWR | O_CREAT);
     ftruncate(thirdPageFile, fileInfo.st_size*2 + numberOfStrings*64);
     void* third = mmap(NULL, fileInfo.st_size*2 + numberOfStrings*64, PROT_READ | PROT_WRITE, MAP_SHARED, thirdPageFile, 0);
     struct resStr* header = (struct resStr*)malloc(numberOfStrings*sizeof(struct resStr));
@@ -144,6 +146,8 @@ int main(int argc, const char * argv[]) {
             break;
     }
     
+    while (wait(0) > 0);
+    
     char* res = (char*)malloc(1<<10);
     for (int i = 0; i < numberOfStrings; ++i){
         memcpy(res, header[i].begin, header[i].end-header[i].begin);
@@ -151,6 +155,9 @@ int main(int argc, const char * argv[]) {
         printf("%s\n", res);
     }
     
+    munmap(text, fileInfo.st_size);
+    munmap(first, numberOfStrings*sizeof(struct str));
+    munmap(third, fileInfo.st_size*2 + numberOfStrings*64);
     
     return 0;
 }
