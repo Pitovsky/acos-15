@@ -83,7 +83,7 @@ int main(int argc, char** argv)
     }
 
     int infd = open(argv[1], O_RDONLY, 0666);
-    char* inputBegin = (char*)mmap(NULL, fileSize, PROT_READ, MAP_SHARED, infd, 0);
+    char* inputBegin = (char*)mmap(NULL, fileSize*sizeof(char), PROT_READ, MAP_SHARED, infd, 0);
     int outhfd = shm_open("/outputheader", O_RDWR | O_CREAT,  0666);
     int outfd = shm_open("/output", O_RDWR | O_CREAT,  0666);
     int hfd = shm_open("/handlers", O_CREAT | O_RDWR,  0666);
@@ -179,6 +179,19 @@ int main(int argc, char** argv)
         for (i = 0; i < fileHeight; ++i)
             printf("%s\n", *(outheaderBegin + 1 + i*2));
     }
+
+    munmap(semh, 2*sizeof(sem_t));
+    munmap(outheaderBegin, outheaderLength*sizeof(char*));
+    munmap(outputBegin, fileSize*2*sizeof(char));
+    munmap(handlersBegin, fileHeight*sizeof(int));
+    munmap(inputBegin, fileSize*sizeof(char));
+
+    shm_unlink("/sems");
+    shm_unlink("/handlers");
+    shm_unlink("/output");
+    shm_unlink("/outputheader");
+
+    close(infd);
 
     return 0;
 }
