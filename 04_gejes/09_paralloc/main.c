@@ -6,23 +6,6 @@
 #include <semaphore.h>
 #include <sys/ipc.h>
 #include <sys/sem.h>
-/*
-union semun
-{
-    int val;
-    struct semid_ds* buf;
-    unsigned short int *array;
-    struct seminfo *__buf;
-};
-
-int binsem_init(int semid)
-{
-    union semun argument;
-    unsigned short values(1);
-    values[0] = 1;
-    argument.array = values;
-    return semctl(semid, 0, SETALL, argument);
-}*/
 
 int Vfunc(char* outputStr, char* inputBegin)
 {
@@ -67,7 +50,7 @@ int main(int argc, char** argv)
     int sonCount = 2;
     if (argc == 1)
     {
-        fprintf(stderr, "Usage: %s filename [soncount]\n", argv[0]);
+        fprintf(stderr, "Usage: %s filename [count_of_child]\n", argv[0]);
         return 1;
     }
     if (argc == 3)
@@ -102,7 +85,7 @@ int main(int argc, char** argv)
     printf("size: %d\theight: %d\n", fileSize, fileHeight);
 
     ftruncate(hfd, fileHeight*sizeof(int));
-    int* handlersBegin = (int*)mmap(NULL, fileHeight*sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, hfd, 0);
+    int* handlersBegin = (int*)mmap(NULL, fileHeight*sizeof(int) + 2*sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED, hfd, 0);
 
     for (i = 0; i < fileHeight; ++i)
     {
@@ -110,7 +93,7 @@ int main(int argc, char** argv)
     }
 
     ftruncate(outfd, fileSize*2*sizeof(char));
-    char* outputBegin = (char*)mmap(NULL, fileSize*2*sizeof(char), PROT_READ | PROT_WRITE, MAP_SHARED, outfd, 0);
+    char* outputBegin = (char*)mmap(NULL, fileSize*2*sizeof(char), PROT_READ | PROT_WRITE, MAP_SHARED, outfd, 0); //2*size because len(V(x)) <= 2*len(x)
 
     int outheaderLength = sizeof(char*)*(1 + 2*fileHeight); //1 for first free position and 2*fileHeight for pairs begin-end of strings
     ftruncate(outhfd, outheaderLength*sizeof(char*));
@@ -120,12 +103,12 @@ int main(int argc, char** argv)
         *(outheaderBegin + i) = NULL;
 
     ftruncate(semfd, 2*sizeof(sem_t));
-    sem_t* semh = (sem_t*)mmap(NULL, 2*sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED, semfd, 0);
+    sem_t* semh = (sem_t*)(handlersBegin + fileHeight);
     sem_t* semouth = semh + 1;
     sem_init(semh, 1, 1);
     sem_init(semouth, 1, 1);
 
-    pid_t par;
+    pid_t par = 1;
     for (i = 0; i < sonCount; ++i)
         if (par != 0)
             par = fork();
@@ -147,7 +130,7 @@ int main(int argc, char** argv)
             if (nowStr == fileHeight)
                 return 0;
 
-            int i = 0;
+            i = 0;
             char* nowStrBegin = inputBegin;
             while (i < nowStr) //find neccessary string
             {
@@ -155,11 +138,14 @@ int main(int argc, char** argv)
                     ++i;
                 ++nowStrBegin;
             }
-            char outputStr[512];
-            memset(outputStr, 0, 512);
+            i = 0;
+            while ((nowStrBegin - inputBegin) + i < fileSize && nowStrBegin[i] != '\n')
+                ++i;
+            char outputStr[2*i];
+            memset(outputStr, 0, 2*i);
             int outLen = Vfunc(outputStr, nowStrBegin);
 
-            //printf("%d: %s\n", nowStr, outputStr);
+            printf("%d: %s\n", nowStr, outputStr);
 
             sem_wait(semouth); //change header
             *(outheaderBegin + 1 + nowStr*2) = *outheaderBegin;
@@ -174,13 +160,12 @@ int main(int argc, char** argv)
     {
         for (i = 0; i < sonCount; ++i)
             wait();
-        printf("-------------------sons ended\n");
+        printf("-------------------childs ended\n");
 
         for (i = 0; i < fileHeight; ++i)
             printf("%s\n", *(outheaderBegin + 1 + i*2));
     }
 
-    munmap(semh, 2*sizeof(sem_t));
     munmap(outheaderBegin, outheaderLength*sizeof(char*));
     munmap(outputBegin, fileSize*2*sizeof(char));
     munmap(handlersBegin, fileHeight*sizeof(int));
