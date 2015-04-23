@@ -47,14 +47,14 @@ int Vfunc(char* outputStr, char* inputBegin)
 
 int main(int argc, char** argv)
 {
-    int sonCount = 2;
+    int childCount = 2;
     if (argc == 1)
     {
         fprintf(stderr, "Usage: %s filename [count_of_child]\n", argv[0]);
         return 1;
     }
     if (argc == 3)
-        sonCount = atoi(argv[2]);
+        childCount = atoi(argv[2]);
 
     struct stat st;
     stat(argv[1],&st);
@@ -67,11 +67,9 @@ int main(int argc, char** argv)
 
     int infd = open(argv[1], O_RDONLY, 0666);
     char* inputBegin = (char*)mmap(NULL, fileSize*sizeof(char), PROT_READ, MAP_SHARED, infd, 0);
-    int outhfd = shm_open("/outputheader", O_RDWR | O_CREAT,  0666);
-    int outfd = shm_open("/output", O_RDWR | O_CREAT,  0666);
-    int hfd = shm_open("/handlers", O_CREAT | O_RDWR,  0666);
-    int semfd = shm_open("/sems", O_RDWR | O_CREAT,  0666);
-    if (semfd < 0 || hfd < 0 || outfd < 0 || outhfd < 0)
+    int outfd = shm_open("/output", O_RDWR | O_CREAT,  0666); //for outputHeader and output strings
+    int hfd = shm_open("/handlers", O_CREAT | O_RDWR,  0666); //for two sems and number of strings
+    if (hfd < 0 || outfd < 0)
     {
         fprintf(stderr, "Error: shm_open failed\n");
         return 3;
@@ -84,7 +82,7 @@ int main(int argc, char** argv)
             ++fileHeight;
     printf("size: %d\theight: %d\n", fileSize, fileHeight);
 
-    ftruncate(hfd, fileHeight*sizeof(int));
+    ftruncate(hfd, fileHeight*sizeof(int) + 2*sizeof(sem_t));
     int* handlersBegin = (int*)mmap(NULL, fileHeight*sizeof(int) + 2*sizeof(sem_t), PROT_READ | PROT_WRITE, MAP_SHARED, hfd, 0);
 
     for (i = 0; i < fileHeight; ++i)
@@ -92,24 +90,23 @@ int main(int argc, char** argv)
         *(handlersBegin + i) = i;
     }
 
-    ftruncate(outfd, fileSize*2*sizeof(char));
-    char* outputBegin = (char*)mmap(NULL, fileSize*2*sizeof(char), PROT_READ | PROT_WRITE, MAP_SHARED, outfd, 0); //2*size because len(V(x)) <= 2*len(x)
 
-    int outheaderLength = sizeof(char*)*(1 + 2*fileHeight); //1 for first free position and 2*fileHeight for pairs begin-end of strings
-    ftruncate(outhfd, outheaderLength*sizeof(char*));
-    char** outheaderBegin = (char**)mmap(NULL, outheaderLength*sizeof(char*), PROT_READ | PROT_WRITE, MAP_SHARED, outhfd, 0);
+    int outheaderLength = (1 + 2*fileHeight); //1 for first free position and 2*fileHeight for pairs begin-end of strings
+    ftruncate(outfd, outheaderLength*sizeof(char*) + fileSize*2*sizeof(char));
+    char** outheaderBegin = (char**)mmap(NULL, outheaderLength*sizeof(char*) + fileSize*2*sizeof(char), PROT_READ | PROT_WRITE,
+                                    MAP_SHARED, outfd, 0); //2*size because len(V(x)) <= 2*len(x)
+    char* outputBegin = (char*)(outheaderBegin + outheaderLength);
     *outheaderBegin = outputBegin;
     for (i = 1; i < outheaderLength; ++i)
         *(outheaderBegin + i) = NULL;
 
-    ftruncate(semfd, 2*sizeof(sem_t));
     sem_t* semh = (sem_t*)(handlersBegin + fileHeight);
     sem_t* semouth = semh + 1;
     sem_init(semh, 1, 1);
     sem_init(semouth, 1, 1);
 
     pid_t par = 1;
-    for (i = 0; i < sonCount; ++i)
+    for (i = 0; i < childCount; ++i)
         if (par != 0)
             par = fork();
 
@@ -139,13 +136,13 @@ int main(int argc, char** argv)
                 ++nowStrBegin;
             }
             i = 0;
-            while ((nowStrBegin - inputBegin) + i < fileSize && nowStrBegin[i] != '\n')
+            while ((nowStrBegin - inputBegin) + i < fileSize && nowStrBegin[i] != '\n') //find inputStr length
                 ++i;
             char outputStr[2*i];
             memset(outputStr, 0, 2*i);
             int outLen = Vfunc(outputStr, nowStrBegin);
 
-            printf("%d: %s\n", nowStr, outputStr);
+            //printf("%d: %s\n", nowStr, outputStr);
 
             sem_wait(semouth); //change header
             *(outheaderBegin + 1 + nowStr*2) = *outheaderBegin;
@@ -158,7 +155,7 @@ int main(int argc, char** argv)
 
     else
     {
-        for (i = 0; i < sonCount; ++i)
+        for (i = 0; i < childCount; ++i)
             wait();
         printf("-------------------childs ended\n");
 
@@ -166,15 +163,12 @@ int main(int argc, char** argv)
             printf("%s\n", *(outheaderBegin + 1 + i*2));
     }
 
-    munmap(outheaderBegin, outheaderLength*sizeof(char*));
-    munmap(outputBegin, fileSize*2*sizeof(char));
+    munmap(outheaderBegin, outheaderLength*sizeof(char*) + fileSize*2*sizeof(char));
     munmap(handlersBegin, fileHeight*sizeof(int));
     munmap(inputBegin, fileSize*sizeof(char));
 
-    shm_unlink("/sems");
     shm_unlink("/handlers");
     shm_unlink("/output");
-    shm_unlink("/outputheader");
 
     close(infd);
 
