@@ -24,7 +24,7 @@
 #include <sys/pipe.h>
 
 
-void FindReference(char* URL) {
+void FindReference(char* URL, int FileDescriptor) {
     char Cash[10];
     Cash[9] = '\0';
     int counter = 0;
@@ -37,7 +37,7 @@ void FindReference(char* URL) {
             counter += 2;
             
             char Check = ' ';
-            while (Check != '"') {
+            while (Check != '"' && Check != '\0') {
                 Check = URL[counter];
                 Cash[counter % 9] = Check;
                 ++counter;
@@ -47,7 +47,7 @@ void FindReference(char* URL) {
             Check = 0;
             if(Cash[(counter - 6) % 9] == 'h' && Cash[(counter - 5) % 9] == 'r' && Cash[(counter - 4) % 9] == 'e' && Cash[(counter - 3) % 9] =='f') {
                 
-                char* linkName = malloc(255);
+                char* linkName = malloc(1 << 20);
                 while (Check != '"' && Check != '#' && Check != '(' && Check != ')' && Check != '{' && Check != '}' && Check != ' ') {
                     
                     Check = URL[counter];
@@ -60,8 +60,11 @@ void FindReference(char* URL) {
                     ++counter;
                 }
                 
-                if(strlen(linkName) != 0)
-                    printf("\n%s\n  ", linkName);
+                if(strlen(linkName) != 0) {
+//                    printf("\n%s\n  ", linkName);
+                    write(FileDescriptor, linkName, strlen(linkName));
+                    
+                }
                 --counter;
             }
             
@@ -98,9 +101,9 @@ int main(int argc, const char * argv[]) {
     
     //Записываем в Пайп
     for(int i = 0; i < URLS_NUMBER; ++i) {
-        char* URL = (char*) malloc(255);
+        char* URL = (char*) malloc(1024);
         scanf("%s", URL);
-        int OK = write(fd, URL, 255);
+        int OK = write(fd, URL, 1024);
         if(!OK)
             exit(1);
     }
@@ -110,55 +113,82 @@ int main(int argc, const char * argv[]) {
     pipe(UrlPipe);
     fcntl(UrlPipe[0], F_SETFL, O_NONBLOCK);
     fcntl(UrlPipe[1], F_SETFL, O_NONBLOCK);
+    int bubu[2];
+    pipe(bubu);
+    fcntl(bubu[0], F_SETFL, O_NONBLOCK);
+    fcntl(bubu[1], F_SETFL, O_NONBLOCK);
     
     
-    for(int i = 0; ;++i) {
-        char* HTML = malloc(1 << 29);
-        char* readSymbol = malloc(20);
-        char* NewURL = (char*) malloc(255);
+    int AnswerProcess = fork();
+    if(AnswerProcess == 0) {
         
-        if(read(fd, NewURL, 255) <= 0)
-            break;
-        
-        char* OurQuery = (char*) malloc(255);
-        strcpy(OurQuery, "curl ");
-        strcat(OurQuery, NewURL);
-        char* MyUrl[] = {"/bin/bash", "-c", OurQuery, NULL};
-        
-        int ErOrNot = fork();
-        if(ErOrNot < 0) {
-            printf("ERROR");
-            abort();
-        }
-        
-        else if(ErOrNot == 0) {
-            dup2(NULL, STDERR_FILENO);
-            int l = dup2(UrlPipe[1], STDOUT_FILENO);
-            if(l < 0) {
-                printf("bug");
+        for(int i = 0; ;++i) {
+            char* HTML = malloc(1 << 29);
+            char* readSymbol = malloc(20);
+            char* NewURL = (char*) malloc(1024);
+            
+            if(read(fd, NewURL, 1024) <= 0)
+                break;
+            
+            char* OurQuery = (char*) malloc(1024);
+            strcpy(OurQuery, "curl ");
+            strcat(OurQuery, NewURL);
+            char* MyUrl[] = {"/bin/bash", "-c", OurQuery, NULL};
+            
+            int ErOrNot = fork();
+            if(ErOrNot < 0) {
+                printf("ERROR");
                 abort();
             }
-            execv(MyUrl[0], MyUrl);
-            exit(1);
-        }
-        
-        else {
-            while(wait(0) >= 0);
-            memset(readSymbol, 0, 20);
-            int bsize;
-            for(int j = 0; ; ++j) {
-                if((bsize = read(UrlPipe[0], readSymbol, 1)) <= 0)
-                    break;
-                strcat(HTML, readSymbol);
+            
+            else if(ErOrNot == 0) {
+                dup2(NULL, STDERR_FILENO);
+                int l = dup2(UrlPipe[1], STDOUT_FILENO);
+                if(l < 0) {
+                    printf("bug");
+                    abort();
+                }
+                execv(MyUrl[0], MyUrl);
+                exit(1);
             }
-            printf("%s\n", HTML);
-            FindReference(HTML);
+            
+            else {
+                while(wait(0) >= 0);
+                memset(readSymbol, 0, 20);
+                int bsize;
+                for(int j = 0; ; ++j) {
+                    if((bsize = read(UrlPipe[0], readSymbol, 1)) <= 0)
+                        break;
+                    strcat(HTML, readSymbol);
+                }
+                printf("%s\n", HTML);
+            
+                FindReference(HTML, bubu[1]);
+                
+            }
+            
+        }
+           
+
+    }
+    else  {
+        while (wait(0) > 0);
+        int bsize;
+        char* readSymbol = malloc(1);
+        char *bubu1 = malloc(1 << 20);
+        for(int j = 0; ; ++j) {
+            if((bsize = read(bubu[0], readSymbol, 1)) <= 0)
+                break;
+            strcat(bubu1, readSymbol);
         }
         
+        printf(bubu1);
 
     }
     close(UrlPipe[1]);
     close(UrlPipe[0]);
+    close(bubu[1]);
+    close(bubu[0]);
     unlink(FIFO_Name);
     return 0;
 }
