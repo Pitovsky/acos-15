@@ -67,6 +67,7 @@ int main(int argc, char** argv)
         for(i = 0; i < maxUsers; ++i)
             users[i] = 0;
 
+        printf("***E-chat server has correctly started.***\n");
         while(1)
         {
             fd_set foread;
@@ -131,20 +132,32 @@ int main(int argc, char** argv)
     }
     else
     {
-        printf("ip in addr formate: %d\n", (int)(thisAddr.sin_addr.s_addr));
+        printf("***Hello in e-chat - a very simple chat!***\n");
         //thisAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         pthread_t gettingThr;
         pthread_create(&gettingThr, NULL, gettingMsgs, NULL);
         char newStr[512];
         while (1)
         {
-            scanf("%s", newStr);
+            int i = 0;
+            char ch = getchar();
+            while (i < 512 && ch != '\n' && ch != EOF)
+            {
+                newStr[i] = ch;
+                ++i;
+                ch = getchar();
+            }
+            newStr[i] = 0;
             if (strcmp(newStr, "/exit") == 0)
                 break;
-            //printf("you send:%s\n", newStr);
-
-            connect(sockfd, (struct sockaddr*)&thisAddr, sizeof(thisAddr));
-            sendall(sockfd, newStr, sizeof(newStr), 0);
+            else if (newStr[0] != '/' && newStr[0] != 0)
+            {
+                //printf("you send:%s\n", newStr);
+                connect(sockfd, (struct sockaddr*)&thisAddr, sizeof(thisAddr));
+                sendall(sockfd, newStr, sizeof(newStr), 0);
+            }
+            else if (newStr[0] == '/')
+                printf("%s: command not found\n", newStr);
         }
         printf("please wait...\n");
         pthread_cancel(gettingThr);
