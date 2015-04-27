@@ -3,7 +3,9 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/select.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 #include <pthread.h>
 
 int sendall(int s, char *buf, int len, int flags)
@@ -37,26 +39,6 @@ static void *gettingMsgs(void* args)
     pthread_exit(NULL);
 }
 
-/*static void *oneUser(void* args)
-{
-    int sockret = *(int*)args;
-    while(1)
-            {
-                char newGetBuf[512];
-                int readed = recv(sockret, newGetBuf, 512, 0);
-                if(readed > 0)
-                {
-                    strcpy(getBuf, newGetBuf);
-                    printf("get:%s\n", newGetBuf);
-                    send(sockret, getBuf, readed, 0);
-                }
-                else
-                {
-                    break;
-                }
-            }
-    pthread_exit(NULL);
-}*/
 
 int main(int argc, char** argv)
 {
@@ -75,38 +57,82 @@ int main(int argc, char** argv)
 
     if (strcmp(mode, "server") == 0)
     {
-        //thisAddr.sin_addr.s_addr = htonl(INADDR_ANY);
+        thisAddr.sin_addr.s_addr = htonl(INADDR_ANY);
         bind(sockfd, (struct sockaddr*)&thisAddr, sizeof(thisAddr));
-        listen(sockfd, 50);
+        listen(sockfd, 10);
 
+        int maxUsers = 100;
+        int users[maxUsers];
+        int i = 0;
+        for(i = 0; i < maxUsers; ++i)
+            users[i] = 0;
 
         while(1)
         {
-            int sockret = accept(sockfd, NULL, NULL);
-            printf("new socket!\n");
-            while(1)
+            fd_set foread;
+            FD_ZERO(&foread);
+            FD_SET(sockfd, &foread);
+            int sockFrom;
+            int nextfd = sockfd;
+            for(i = 0; i < maxUsers; ++i)
             {
-                char newGetBuf[512];
-                int readed = recv(sockret, newGetBuf, 512, 0);
-                if(readed > 0)
+                if(users[i] != 0)
                 {
-                    strcpy(getBuf, newGetBuf);
-                    printf("get:%s\n", newGetBuf);
-                    send(sockret, getBuf, readed, 0);
+                    FD_SET(users[i], &foread);
                 }
-                else
-                {
-                    break;
-                }
+                if(nextfd < users[i])
+                    nextfd = users[i];
             }
 
-            close(sockret);
+            int code = select(nextfd + 1, &foread, NULL, NULL, NULL);
+            if (code < 0)
+            {
+                perror("select error\n");
+            }
+
+            if (FD_ISSET(sockfd, &foread))
+            {
+                sockFrom = accept(sockfd, NULL, NULL);
+
+                i = 0;
+                while (i < maxUsers && users[i] != 0)
+                    ++i;
+                printf("New user (id %d) connected\n", i);
+
+                if(i == maxUsers)
+                {
+                    fprintf(stderr, "Error: user limit exceeded!\n");
+                    return 1;
+                }
+
+                users[i] = sockFrom;
+            }
+
+            for(i = 0; i < maxUsers; ++i)
+            {
+                if(users[i] != 0 && FD_ISSET(users[i], &foread))
+                {
+                    int readed = recv(users[i], getBuf, 512, 0);
+                    if(readed <= 0)
+                    {
+                        close(users[i]);
+                        users[i] = 0;
+                        printf("id %d disconnected.\n", i);
+                        continue;
+                    }
+                    printf("id %d send: %s\n", i, getBuf);
+                    int j = 0;
+                    for (j = 0; j < maxUsers; ++j)
+                        if (users[j] != 0 && j != i) //sending to all instead i
+                            send(users[j], getBuf, readed, 0);
+                }
+            }
         }
     }
     else
     {
         printf("ip in addr formate: %d\n", (int)(thisAddr.sin_addr.s_addr));
-       // thisAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        //thisAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         pthread_t gettingThr;
         pthread_create(&gettingThr, NULL, gettingMsgs, NULL);
         char newStr[512];
