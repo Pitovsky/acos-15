@@ -194,9 +194,9 @@ void releaseHashtable(Hashtable *hashtable)
             {
                 prevElement = ptr;
                 ptr = ptr->next;
-                free(prevElement);
+                if (prevElement)
+                    free(prevElement);
             } while (ptr);
-            free(ptr);
         }
     }
 }
