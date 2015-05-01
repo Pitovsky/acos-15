@@ -20,11 +20,24 @@ void readFile(char *filename, NSInteger level)
     
     char c;
     NSInteger qty = 0;
+    int inword = 0;
     while (read(fd, &c, 1) != 0)
     {
-        if (!((c >= 'a' && c <= 'z') || (c >= '0' && c<= '9') || (c >= 'A' && c <= 'Z') ||  c== '_'))
+        switch (c)
         {
-            qty++;
+            case '\0':
+            case ' ':
+            case '\t':
+            case '\n':
+            case '\r':
+                if (inword)
+                {
+                    inword = 0;
+                    qty++;
+                }
+                break;
+            default:
+                inword = 1;
         }
     }
     printf("%*s %s\t%d\n", level, "", filename, qty);
