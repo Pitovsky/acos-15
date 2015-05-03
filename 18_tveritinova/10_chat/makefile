@@ -1,4 +1,4 @@
 all: rez
-rez: main.c
-	gcc main.c -o rez
-main.c:
+rez: main1.c
+	gcc main1.c -o rez
+main1.c:
