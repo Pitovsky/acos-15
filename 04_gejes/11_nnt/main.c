@@ -34,13 +34,44 @@ int recvall(int sfd, void* buf, int len, int flags)
             return -1;
         total += n;
     }
-
+    return total;
+}
+int sendproc(int sfd, const void* buf, int len, int flags)
+{
+    int total = 0;
+    printf("\n");
+    while(total < len)
+    {
+        int n = send(sfd, buf + total, len - total, flags);
+        if(n == -1)
+            return -1;
+        total += n;
+        printf("\r%d%%", total*100/len);
+        fflush(stdout);
+    }
+    printf("\n");
+    return total;
+}
+int recvproc(int sfd, void* buf, int len, int flags)
+{
+    int total = 0;
+    printf("\n");
+    while(total < len)
+    {
+        int n = recv(sfd, buf + total, len - total, flags);
+        if(n == -1)
+            return -1;
+        total += n;
+        printf("\r%d%%", total*100/len);
+        fflush(stdout);
+    }
+    printf("\n");
     return total;
 }
 
 struct sockaddr_in thisAddr;
 int sockfd;
-int maxFileSize = 1024*1024;
+int maxFileSize = 32*1024*1024;
 
 static void *oneUserWork(void* sockfrom)
 {
@@ -66,7 +97,7 @@ static void *oneUserWork(void* sockfrom)
             printf("added file: %s\n", filename);
             recvall(sockfd, (void*)&filesize, sizeof(int), 0);
             int i;
-            recvall(sockfd, infile, filesize, 0);
+            recvproc(sockfd, infile, filesize, 0);
            // for (i = 0; i < filesize; ++i)
           //      while (recv(sockfd, infile + i, 1, 0) != 1);
             printf("(loaded)\n");
@@ -103,7 +134,7 @@ static void *oneUserWork(void* sockfrom)
                 char infile[maxFileSize];
                 fread(infile, sizeof(char), st.st_size, sendFile);
                 fclose(sendFile);
-                sendall(sockfd, infile, st.st_size, 0);
+                sendproc(sockfd, infile, st.st_size, 0);
             }
         }
     }
@@ -187,7 +218,7 @@ int main(int argc, char** argv)
                 sendall(sockfd, (void*)&namelen, sizeof(int), 0);
                 sendall(sockfd, shortname, namelen, 0);
                 sendall(sockfd, (void*)&filesize, sizeof(int), 0);
-                sendall(sockfd, infile, filesize, 0);
+                sendproc(sockfd, infile, filesize, 0);
                 printf("file successful sended.\n");
             }
             else if (strcmp(com, "get") == 0)
@@ -206,7 +237,7 @@ int main(int argc, char** argv)
                     printf("There is not this file: %s\n", name);
                     continue;
                 }
-                recvall(sockfd, infile, filesize, 0);
+                recvproc(sockfd, infile, filesize, 0);
                 printf("loaded!\n");
                 FILE* newFile = fopen(name, "wb");
                 fwrite(infile, sizeof(char), filesize, newFile);
