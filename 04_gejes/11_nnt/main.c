@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/select.h>
@@ -70,9 +71,7 @@ int recvproc(int sfd, void* buf, int len, int flags)
 }
 
 struct sockaddr_in thisAddr;
-int sockfd;
 int maxFileSize = 64*1024*1024;
-char infile[64*1024*1024];
 char* serverExecName;
 
 static void *oneUserWork(void* sockfrom)
@@ -82,6 +81,7 @@ static void *oneUserWork(void* sockfrom)
     char filename[255];
     char com[4];
     int filesize = 0;
+    char* infile = (char*)malloc(maxFileSize*sizeof(char));
     while(1)
     {
         connect(sockfd, (struct sockaddr *)&thisAddr, sizeof(thisAddr));
@@ -140,13 +140,13 @@ static void *oneUserWork(void* sockfrom)
             if (st.st_size > 0) //file exist, send it
             {
                 FILE* sendFile = fopen(filename, "rb");
-                char infile[maxFileSize];
-                fread(infile, sizeof(char), st.st_size, sendFile);
+                fread(infile, sizeof(char), (int)st.st_size, sendFile);
                 fclose(sendFile);
                 sendproc(sockfd, infile, st.st_size, 0);
             }
         }
     }
+    free(infile);
     pthread_exit(NULL);
 }
 
@@ -165,7 +165,7 @@ int main(int argc, char** argv)
     ++serverExecName;
     char* mode = argv[1];
 
-    sockfd = socket(AF_INET, SOCK_STREAM, 0);
+    int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 
     thisAddr.sin_family = AF_INET;
     thisAddr.sin_port = htons(atoi(argv[2]));
@@ -191,6 +191,7 @@ int main(int argc, char** argv)
     {
         //thisAddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
         char com[4];
+        char* infile = (char*)malloc(maxFileSize*sizeof(char));
         while (1)
         {
             scanf("%s", com);
@@ -284,6 +285,7 @@ int main(int argc, char** argv)
             else
                 printf("%s: command not found\n", com);
         }
+        free(infile);
     }
 
     close(sockfd);
