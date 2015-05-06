@@ -11,7 +11,6 @@ int main(int argc, const char * argv[]) {
         FILE* pipes[2];
         pipes[0] = popen(argv[2], "r");
         pipes[1] = popen(argv[3], "r");
-        while (wait(0)>0);
         char* value_first = (char*)malloc(1<<10);
         char* value_second = (char*)malloc(1<<10);
         char* key_first = (char*)malloc(1<<10);
@@ -69,7 +68,6 @@ int main(int argc, const char * argv[]) {
             pipes[i] = popen(argv[i], "r");
             opened[i] = 1;
         }
-        while (wait(0)>0);
         
         char* input = (char*)malloc(1<<10);
         while(1){
