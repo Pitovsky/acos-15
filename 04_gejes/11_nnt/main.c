@@ -46,7 +46,7 @@ int sendproc(int sfd, const void* buf, int len, int flags)
         if(n == -1)
             return -1;
         total += n;
-        printf("\r%d%%", total*100/len);
+        printf("\r%d%%", (total/100)*100/(len/100));
         fflush(stdout);
     }
     printf("\n");
@@ -62,7 +62,7 @@ int recvproc(int sfd, void* buf, int len, int flags)
         if(n == -1)
             return -1;
         total += n;
-        printf("\r%d%%", total*100/len);
+        printf("\r%d%%", (total/100)*100/(len/100));
         fflush(stdout);
     }
     printf("\n");
@@ -71,7 +71,9 @@ int recvproc(int sfd, void* buf, int len, int flags)
 
 struct sockaddr_in thisAddr;
 int sockfd;
-int maxFileSize = 32*1024*1024;
+int maxFileSize = 64*1024*1024;
+char infile[64*1024*1024];
+char* serverExecName;
 
 static void *oneUserWork(void* sockfrom)
 {
@@ -80,7 +82,6 @@ static void *oneUserWork(void* sockfrom)
     char filename[255];
     char com[4];
     int filesize = 0;
-    char infile[maxFileSize];
     while(1)
     {
         connect(sockfd, (struct sockaddr *)&thisAddr, sizeof(thisAddr));
@@ -110,9 +111,17 @@ static void *oneUserWork(void* sockfrom)
         {
             struct dirent** namelist;
             int count = scandir(".", &namelist, NULL, alphasort);
+            int goodscount = count;
             int i = 0;
-            sendall(sockfd, (void*)&count, sizeof(int), 0);
             for (i = 0; i < count; ++i)
+                if (strcmp(namelist[i]->d_name, ".") == 0 || strcmp(namelist[i]->d_name, "..") == 0 ||
+                    strcmp(namelist[i]->d_name, serverExecName) == 0)
+                    --goodscount;
+            sendall(sockfd, (void*)&goodscount, sizeof(int), 0);
+
+            for (i = 0; i < count; ++i)
+                if (strcmp(namelist[i]->d_name, ".") != 0 && strcmp(namelist[i]->d_name, "..") != 0 &&
+                    strcmp(namelist[i]->d_name, serverExecName) != 0)
             {
                 int len = strlen(namelist[i]->d_name);
                 sendall(sockfd, (void*)&len, sizeof(int), 0);
@@ -150,6 +159,10 @@ int main(int argc, char** argv)
         fprintf(stderr, "Usage: %s <client|server> <port> [ip]\n", argv[0]);
         return 1;
     }
+    serverExecName = argv[0] + strlen(argv[0]) - 1;
+    while (serverExecName >= argv[0] && *serverExecName != '/')
+        --serverExecName;
+    ++serverExecName;
     char* mode = argv[1];
 
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
@@ -193,7 +206,6 @@ int main(int argc, char** argv)
             else if (strcmp(com, "add") == 0)
             {
                 char name[255];
-                char infile[maxFileSize];
                 scanf("%s", name);
                 FILE* sendFile = fopen(name, "rb");
                 if (sendFile == NULL)
@@ -201,11 +213,20 @@ int main(int argc, char** argv)
                     printf("Error: cannot read this file: %s.\n", name);
                     continue;
                 }
-                int filesize = 0;
-                while (filesize < maxFileSize && fread(infile + filesize, sizeof(char), 1, sendFile) == 1)
-                    ++filesize;
-                if (filesize == maxFileSize)
-                    printf("File too big, cutted by %d bytes.\n", filesize);
+
+                struct stat st;
+                stat(name,&st);
+                int filesize = (int)st.st_size;
+                if (st.st_size >= maxFileSize)
+                {
+                    printf("File too big, max size is %d bytes, but this file is %d bytes!\n", maxFileSize, filesize);
+                    continue;
+                }
+                if (fread(infile, sizeof(char), st.st_size, sendFile) < filesize)
+                {
+                    printf("Error while reading this file!\n");
+                    continue;
+                }
                 fclose(sendFile);
 
                 connect(sockfd, (struct sockaddr*)&thisAddr, sizeof(thisAddr));
@@ -224,7 +245,6 @@ int main(int argc, char** argv)
             else if (strcmp(com, "get") == 0)
             {
                 char name[255];
-                char infile[maxFileSize];
                 scanf("%s", name);
                 int namelen = strlen(name);
                 sendall(sockfd, com, 4, 0);
