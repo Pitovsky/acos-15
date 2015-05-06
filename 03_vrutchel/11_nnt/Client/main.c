@@ -29,22 +29,16 @@ int main(int argc, char **argv)
         exit(errno);
     }
 
-    printf("I creates socket\n");
-
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = htons(PORT);//тут не уверена по поводу используемой функции
     addr.sin_addr.s_addr = inet_addr(argv[1]);//и здесь естественно тоже
-
-    printf("I made the struct\n");
 
     //поехали коннектиться с сервером
     if(connect(sock, (struct sockaddr *) &addr, sizeof(addr)) < 0){//иницирует соединение на сокете
         perror("Problems in connecting with server");//если произошла ошибка, то возвращается -1
         exit(errno);
     }
-
-    printf("I made the connection\n");
 
     //теперь создаём сообщение, которое надо будет переслать
     int name_length, info_length;
