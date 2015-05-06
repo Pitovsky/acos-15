@@ -62,8 +62,8 @@ int main(int argc, char* argv[]){
     sscanf(argv[2], "%d", &port);
     socketAddress.sin_port = htons(port);
     socketAddress.sin_family = AF_INET;
-    inet_aton(argv[3], &(socketAddress.sin_addr));
     if (strcmp(argv[1], "client") == 0){
+        inet_aton(argv[3], &(socketAddress.sin_addr));
         pthread_t reciever;
         pthread_create(&reciever, NULL, getMsgFromServer, NULL);
         char* input = (char*)malloc(1<<10*sizeof(char));
