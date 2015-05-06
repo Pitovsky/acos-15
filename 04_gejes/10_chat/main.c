@@ -56,6 +56,7 @@ static void *oneUserListen(void* usrid)
         if (recv(users[userID], (void*)&msglen, sizeof(int), 0) <= 0)
         {
             printf("id %d disconnected\n", userID);
+            users[userID] = -1;
             break;
         }
         recvall(users[userID], getBuf, msglen, 0);
@@ -65,6 +66,7 @@ static void *oneUserListen(void* usrid)
         for (i = 0; i < maxUsers; ++i)
             if (i != userID && users[userID] != -1)
         {
+            sendall(users[i], (void*)&msglen, sizeof(int), 0);
             sendall(users[i], getBuf, msglen, 0);
         }
     }
@@ -76,7 +78,10 @@ static void *gettingMsgs(void* args)
     while(1)
         {
             connect(sockfd, (struct sockaddr *)&thisAddr, sizeof(thisAddr));
-            recv(sockfd, getBuf, 512, 0);
+            int msglen = 0;
+            recv(sockfd, (void*)&msglen, sizeof(int), 0);
+            recvall(sockfd, getBuf, msglen, 0);
+            getBuf[msglen] = 0;
             printf("get:%s\n", getBuf);
         }
     pthread_exit(NULL);
