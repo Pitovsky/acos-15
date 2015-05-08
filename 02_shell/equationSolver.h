@@ -1,4 +1,3 @@
-//
 //  equationSolver.h
 //  02_shell
 //

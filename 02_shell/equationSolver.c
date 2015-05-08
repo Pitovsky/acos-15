@@ -1,4 +1,3 @@
-//
 //  equationSolver.c
 //  02_shell
 //
