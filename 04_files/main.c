@@ -99,7 +99,7 @@ void processDir(const char *name, NSInteger currentLevel, NSInteger level, short
             readFile(path, currentLevel);
         }
     } while ((entry = readdir(dir)));
-        closedir(dir);
+    closedir(dir);
 }
 
 int main(NSInteger argc, char **argv)
