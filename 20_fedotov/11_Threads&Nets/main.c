@@ -25,8 +25,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <pthread.h>
+#include <limits.h>
 
-int HowManyMessages = 10;
 int SocketFD;
 struct sockaddr_in OurAddress;
 
@@ -38,8 +38,8 @@ struct DatMessage{
 };
 
 
-int ToSend(int SocketFileDesc, struct DatMessage* OurMessage, int MessageSize, int Flags) {
-    int Sent = 0;
+long long ToSend(int SocketFileDesc, void* OurMessage, int MessageSize, int Flags) {
+    long long Sent = 0;
     
     while (Sent < MessageSize) {
         int BytesNumber = send(SocketFileDesc, OurMessage + Sent, MessageSize - Sent, 0);
@@ -52,8 +52,10 @@ int ToSend(int SocketFileDesc, struct DatMessage* OurMessage, int MessageSize, i
     return Sent;
 }
 
-int ToRecieve(int SocketFileDesc, struct DatMessage* OurMessage, int MessageSize, int Flags) {
-    int Recieved = 0;
+
+
+long long ToRecieve(int SocketFileDesc, void* OurMessage, int MessageSize, int Flags) {
+    long long Recieved = 0;
     
     while (Recieved < MessageSize) {
         int BytesNumber = recv(SocketFileDesc, OurMessage + Recieved, MessageSize - Recieved, 0);
@@ -66,51 +68,59 @@ int ToRecieve(int SocketFileDesc, struct DatMessage* OurMessage, int MessageSize
     return Recieved;
 }
 
+
+
+
+
 void* ServerJob(int* SocketFromDescr) {
+    int Counter = 0;
     printf("---------Hello, Thread-----------\n");
     pthread_t SocketFD = *SocketFromDescr;
-    struct DatMessage* Message = (struct DatMessage*) malloc(sizeof(struct DatMessage*));
     
     while (1) {
+        char* Recieved = malloc(40000000000);
+        int NameLen = 0;
+        long long DataLen = 0;
+        char* FileName = malloc(1 << 10);
+        memset(FileName, 0, 1 << 10);
+        
         int Res = connect(SocketFD, (struct sockaddr*)&OurAddress, sizeof(OurAddress));
-//        if(Res < 0) {
-//            perror("Error while connecting at work");
-//            break;
-//        }
+        
+        ToRecieve(SocketFD, (void*)&NameLen, sizeof(int), 0);
+        ToRecieve(SocketFD, (void*)&DataLen, sizeof(long long), 0);
+        ToRecieve(SocketFD, FileName, NameLen, 0);
+        ToRecieve(SocketFD, Recieved, DataLen, 0);
         
         
-        int BytesNumber = ToRecieve(SocketFD, Message,  2 * sizeof(int) + (1 << 10) + (1 << 23), 0);
-        if(BytesNumber < 0) {
-            perror("Bubu! recv Error");
-            exit(1);
-        }
-        
-        if(Message -> DataSize == 0 || Message -> NameLen == 0)
+        if(NameLen == 0)
             continue;
         
+        
         printf("_-'-_|_-'-_[Server've got the message!]_-'-_|_-'-_\n_!_!_INFO_!_!_\n");
-
-        printf("- NameLen --> %d\n", Message -> NameLen);
-        printf("- Name --> %s\n", Message -> Name);
-        printf("- DataSize --> %d \n", Message -> DataSize);
-        printf("- Data --> %s\n", Message -> Data);
-        
-        char* Filename = malloc(1 << 10);
-        strcpy(Filename, "/Users/semenfedotov/Threads/");
-        strcat(Filename, Message -> Name);
         
         
-        printf("FileNaame is = %s\n");
+        printf("- NameLen --> %d\n", NameLen);
+        printf("- Name --> %s\n", FileName);
+        printf("- DataSize --> %lld \n", DataLen);
+        printf("- Data --> %s\n", Recieved);
         
-        int DatFileFD = open(Filename, O_RDWR | O_CREAT | S_IRWXU, 0777);
+        char* ToOpenFile = malloc(1 << 10);
+        strcpy(ToOpenFile, "/Users/semenfedotov/Threads/");
+        strcat(ToOpenFile, FileName);
+        free(FileName);
+        
+        
+        printf("FileNaame is = %s\n", ToOpenFile);
+        
+        int DatFileFD = open(ToOpenFile, O_RDWR | O_CREAT | S_IRWXU, 0777);
         if(DatFileFD < 0) {
             perror("Error while opening Server File");
             exit(1);
         }
         
         long long NumberWritten = 0;
-        while (NumberWritten < Message -> DataSize) {
-            NumberWritten += write(DatFileFD, Message -> Data + NumberWritten, 4094);
+        while (NumberWritten < DataLen) {
+            NumberWritten += write(DatFileFD, Recieved + NumberWritten, 4096);
         }
         if(NumberWritten < 0) {
             perror("Error while Writing Data into File");
@@ -120,23 +130,23 @@ void* ServerJob(int* SocketFromDescr) {
         close(DatFileFD);
         
         
-        free(Filename);
+        free(ToOpenFile);
+        free(Recieved);
     }
     
-    free(Message);
     
     pthread_exit(NULL);
     
     
 }
-    
+
+
 
 
 int main(int argc, const char * argv[]) {
     setbuf(stdout, 0);
     int Mode;
     scanf("%d", &Mode);
-    
     SocketFD = socket(AF_INET, SOCK_STREAM, 0);
     if(SocketFD < 0) {
         perror("Error While socketing Client");
@@ -146,14 +156,12 @@ int main(int argc, const char * argv[]) {
     int PORT;
     printf("Please, enter Port Number : ");
     scanf("%d", &PORT);
-
     
     OurAddress.sin_family = AF_INET;
     OurAddress.sin_port = htons(PORT);
-
     
     if(Mode == 0) {//Server
-        
+        printf("/\-/\-/\-Hello, Today you're a Server-/\-/\-/\\n");
         OurAddress.sin_addr.s_addr = htonl(INADDR_ANY);
         
         if(bind(SocketFD, (struct sockaddr*)&OurAddress, sizeof(OurAddress)) < 0) {
@@ -188,17 +196,22 @@ int main(int argc, const char * argv[]) {
     }
     
     else {
-        
-        
-        
+        printf("Enter IP : ");
+
+//        printf("/\.'.'.'.'.You're A Client!.'.'.'.'.'/\\n");
+//        printf("\/-_-_-____-_-_-____-_-_-____-_-_-___\/\n");
+//        
 //        int PORT;
 //        char* IP = malloc(255);
 //        printf("Enter Port Number : ");
 //        scanf("%d", &PORT);
 //        printf("Enter IP Number : ");
 //        scanf("%s", IP);
+        char * IP = malloc(255);
+        scanf("%s", IP);
 
-        
+        OurAddress.sin_addr.s_addr = inet_addr(IP);
+
         
         
         
@@ -211,14 +224,11 @@ int main(int argc, const char * argv[]) {
         }
         
         
-        struct DatMessage* NewMessage = (struct DatMessage*) malloc(sizeof(struct DatMessage*));
         for(int i = 0; i < HowManyMessages; ++i){
-            NewMessage -> NameLen = 0;
-            NewMessage -> DataSize = 0;
-            NewMessage -> Data[0] = '\0';
-            NewMessage -> Name[0] = '\0';
-            char FileName[1 << 10];
-            char Data[1 << 22];
+            char* FileName = malloc(1 << 10);
+            char* Data = malloc(2000000000);
+            int NameLen = 0;
+            long long FileSize = 0;
             printf("Please, enter  Name of File: ");
             scanf("%s", FileName);
             
@@ -242,12 +252,14 @@ int main(int argc, const char * argv[]) {
                 exit(1);
             }
             
-            printf("Size = %d\n", OurStatistic.st_size);
             
-            int NumBytes = 0;
-            int Counter = 0;
+            
+            printf("Size = %lld\n", OurStatistic.st_size);
+            
+            long long NumBytes = 0;
+            long  long Counter = 0;
             while (NumBytes < OurStatistic.st_size) {
-               NumBytes += read(ClientDescr, NewMessage -> Data + NumBytes, 2);
+               NumBytes += read(ClientDescr, Data + NumBytes, 4096);
                ++Counter;
                 printf("Counter = %d\n", Counter);
                 printf("NumBytes = %d\n", NumBytes);
@@ -260,17 +272,26 @@ int main(int argc, const char * argv[]) {
             Counter = 0;
             close(ClientDescr);
             
+            NameLen = strlen(FileName);
+            FileSize = OurStatistic.st_size;
             
-            NewMessage -> NameLen = strlen(FileName);
-            NewMessage -> DataSize = OurStatistic.st_size;
-            memcpy(NewMessage -> Name, FileName, strlen(FileName));
-            printf("Data = %s DataSize = %d\n", NewMessage -> Data, NewMessage -> DataSize);
-            printf("ToSend Name = %s\n", NewMessage -> Name);
             
-            ToSend(SocketFD, NewMessage, 2 * sizeof(int) + (1 << 10) + (1 << 22), 0);
+            printf("ToSend Name = %s\n", FilePath);
+            
+            
+            printf("Data !!! = %s\n Size = %d", Data, strlen(Data));
+            printf("FileSize = %lld\n", FileSize);
+            
+            ToSend(SocketFD, (void*)&NameLen, sizeof(int), 0);
+            ToSend(SocketFD, (void*)&FileSize, sizeof(long long), 0);
+            ToSend(SocketFD, FileName, NameLen, 0);
+            ToSend(SocketFD, Data, FileSize, 0);
+        
+            free(FilePath);
+            free(FileName);
+            free(Data);
         }
         
-        free(NewMessage);
 
         
         

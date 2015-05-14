@@ -78,35 +78,35 @@ void FindReference(char* URL, int FileDescriptor) {
 
 
 int main(int argc, const char * argv[]) {
-    int URLS_NUMBER;
-    scanf("%d", &URLS_NUMBER);
-    
-    char* FIFO_Name = (char*) malloc(sizeof("URLS_SRC"));
-    extern char ** environ;
-    setenv("URLS_SRC", "OurURLS", 123);
-    strcpy(FIFO_Name, "OurURLS");
-    unlink(FIFO_Name);
-    
-    int res = mkfifo(FIFO_Name, O_RDWR | S_IRWXU | O_NONBLOCK);
-    if(res < 0) {
-        fprintf(stderr, "Can't make pipe");
+    char* DatPipeName = malloc(1 << 10);
+    DatPipeName = getenv("URLS_SRC");
+    mkfifo(DatPipeName, S_IFIFO | 077);
+    int DatPipeFD = open(DatPipeName, O_WRONLY);
+    if(DatPipeFD < 0) {
+        perror("Error while opening UrlsPipe");
         exit(1);
     }
+    char* DatURL = malloc(255);
+    while (strcmp(DatURL, "end")){
+            scanf("%s", DatURL);
+            write(DatPipeFD, DatURL, 255);
+    }
+        fclose(DatPipeFD);
     
-    int fd = open(FIFO_Name, O_RDWR | O_CREAT | O_NONBLOCK);
-    if (fd < 0) {
-        perror("");
-        exit(1);
+    char* FIFO_Name = getenv("URLS_SRC");
+    int fd = open(FIFO_Name, O_RDONLY);
+    if(fd < 0) {
+        mkfifo(FIFO_Name, S_IFIFO | 0777);
+        fd = open(FIFO_Name, O_RDWR | O_CREAT | O_NONBLOCK);
+        if(fd < 0) {
+            perror("Error while opening pipe");
+                exit(1);
+        }
     }
     
-    //Записываем в Пайп
-    for(int i = 0; i < URLS_NUMBER; ++i) {
-        char* URL = (char*) malloc(1024);
-        scanf("%s", URL);
-        int OK = write(fd, URL, 1024);
-        if(!OK)
-            exit(1);
-    }
+    
+
+    
     
     //Создаем Пайп с УРЛами
     int UrlPipe[2];
@@ -153,7 +153,6 @@ int main(int argc, const char * argv[]) {
             }
             
             else {
-                while(wait(0) >= 0);
                 memset(readSymbol, 0, 20);
                 int bsize;
                 for(int j = 0; ; ++j) {
@@ -172,7 +171,7 @@ int main(int argc, const char * argv[]) {
 
     }
     else  {
-        while (wait(0) > 0);
+//        while (wait(0) > 0);
         int bsize;
         char* readSymbol = malloc(1);
         char *bubu1 = malloc(1 << 20);

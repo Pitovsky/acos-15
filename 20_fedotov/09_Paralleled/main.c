@@ -26,23 +26,23 @@
 int Offset;
 
 char* OurFunction(char* ToChange) {
+    int SizeOfString = strlen(ToChange);
+    int Shift = 0;
     char* NewString = malloc(strlen(ToChange) * 2);
-    for(int i = 0; i < strlen(ToChange); ++i) {
+    for(int i = 0; i < SizeOfString; ++i) {
         if(ToChange[i] >= 'A' && ToChange[i] <= 'Z') {
-            char* ToInsert = malloc(2);
-            ToInsert[0] = ToChange[i] + 32;
-            ToInsert[1] = ToChange[i] + 32;
-            strcat(NewString, ToInsert);
+
+            NewString[Shift] = ToChange[i] + 32;
+            NewString[Shift + 1] = ToChange[i] + 32;
+            Shift += 2;
         }
         else if(ToChange[i] >= 'a' && ToChange[i] <= 'z') {
-            char* ToInsert = malloc(1);
-            ToInsert[0] = ToChange[i] - 32;
-            strcat(NewString, ToInsert);
+            NewString[Shift] = ToChange[i] - 32;
+            ++Shift;
         }
         else {
-            char* ToInsert = malloc(1);
-            ToInsert[0] = ToChange[i];
-            strcat(NewString, ToInsert);
+            NewString[Shift] = ToChange[i];
+            ++Shift;
         }
     }
     return NewString;
@@ -65,12 +65,14 @@ void FillFirstZone(FILE* OurFile, int* OurArray) {
     char DatChar;
     while ((DatChar = getc(OurFile)) != EOF) {
         if(DatChar == '\n') {
-            OurArray[LineNumber] = counter;
-            ++LineNumber;
+            *(OurArray + LineNumber) = counter;
+           ++LineNumber;
         }
         ++counter;
     }
 }
+
+
 
 
 
@@ -94,21 +96,16 @@ int main(int argc, const char * argv[]) {
     
     printf("linii%d", LineNumber);
     
-    int StringsStarts[LineNumber];
     
-    StringsStarts[0] = 1;
     DatFile = fopen(OurFile, "rw");
     if(DatFile == NULL)
         perror("Error While opening File");
     
-    FillFirstZone(DatFile, StringsStarts);
     
     fclose(DatFile);
 
     printf("\n");
-    for(int i = 0; i < LineNumber; ++i) {
-        printf(" %d ", StringsStarts[i]);
-    }
+
     printf(" lala\n");
 
     
@@ -145,34 +142,31 @@ int main(int argc, const char * argv[]) {
     
     
     int* FirstZonePointer = (int*) mmap(NULL, LineNumber * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, First, 0);
-    
     if(FirstZonePointer == MAP_FAILED)
         perror("First zone mapping error");
 
     
     char* SecondZonePointer =(char*) mmap(NULL, SizeOfFile, PROT_READ | PROT_WRITE, MAP_SHARED, Second, 0);
-    
     if(SecondZonePointer == MAP_FAILED)
         perror("Second zone mapping error");
     
     void* ThirdZonePointer = mmap(NULL, SizeOfFile * 2 + 2 * LineNumber * sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, Third, 0);
-    
     if(ThirdZonePointer == MAP_FAILED)
         perror("Third zone mapping error");
+    
+    
+    FillFirstZone(DatFile, FirstZonePointer);
 
-    Offset = 2 * LineNumber * sizeof(int*) + 1;
     
-    for(int i = 0; i < LineNumber; ++i) {
-        *(FirstZonePointer + i) = StringsStarts[i];
-        printf("%d ", *(FirstZonePointer + i));
-    }
+
+    Offset = 2 * LineNumber * sizeof(int) + sizeof(int) + 1;
+    
+    
     printf("\n");//Не забывть про слешН
-    
     printf("\n Ourfile =\n%s\n", SecondZonePointer);
     
     
     int ProcessNumber = LineNumber;
-    
     while (ProcessNumber > 0) {
         int res = fork();
         if(res == 0) {
@@ -215,7 +209,7 @@ int main(int argc, const char * argv[]) {
             printf("\n");
             *(int*)(ThirdZonePointer + 2 * (WhatLine) * sizeof(int)) = Offset;
             Offset += strlen(DatString);
-            
+            *(int*)(ThirdZonePointer + 2 * (LineNumber) * sizeof(int) + sizeof(int)) = Offset + 1;
             *(int*)(ThirdZonePointer + 2 * (WhatLine) * sizeof(int) + sizeof(int)) = Offset;
             dispatch_semaphore_signal(ThirdZoneSemaphore);
             sleep(1);
@@ -224,9 +218,8 @@ int main(int argc, const char * argv[]) {
         }
         while (wait(0) > 0) {}
         int counter = 0;
-        char ds;
 //
-//        Offset = *(int*)(ThirdZonePointer + 2 * (6 - ProcessNumber) * sizeof(int) + sizeof(int)) + 1;
+        Offset = *(int*)(ThirdZonePointer + 2 * (LineNumber) * sizeof(int) + sizeof(int));
         --ProcessNumber;
     }
     
