@@ -1,7 +1,7 @@
 all: main
 
 main:main.c
-	clang main.c -o main -std=c11 -Weverything -Wno-missing-prototypes -D_DEFAULT_SOURCE
+	clang main.c -o main -std=gnu11 -Weverything -Wno-missing-prototypes -Wdollar-in-identifier-extension -D_DEFAULT_SOURCE
 
 clean:
-	rm -f main
+	rm -f main *.o

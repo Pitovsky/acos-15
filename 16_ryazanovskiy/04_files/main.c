@@ -1,13 +1,15 @@
 #include <assert.h>
 #include <ctype.h>
+#include <dirent.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <dirent.h>
 #include <unistd.h>
-#include <stdio.h>
+
+#include "../01_hashtable/hashset.c"
 
 int countWords(const char* filePath)
 {
@@ -29,7 +31,11 @@ int countWords(const char* filePath)
     return answer;
 }
 
-void printWordStats(const char* filePath, char followSymlinks, int recursionDepthLimit)
+
+HashTable_t* filepathHashTable = 0;
+
+void printWordStats(const char* filePath, char followSymlinks, int recursionDepthLimit,
+                    char listOnce)
 {
     if (recursionDepthLimit)
     {
@@ -39,15 +45,27 @@ void printWordStats(const char* filePath, char followSymlinks, int recursionDept
         else
             lstat(filePath, &sb);
 
-        if (sb.st_mode & S_IFREG)
+        if (S_ISREG(sb.st_mode))
         {
+            if (listOnce)
+            {
+                char* realPath = realpath(filePath, 0);
+                if (strcmp(realPath, filePath))
+                {
+                    if (!findInHashTable(filepathHashTable, realPath))
+                        insertToHashTable(filepathHashTable, realPath, 1);
+                    else
+                        return;
+                }
+                free(realPath);
+            }
             int count = countWords(filePath);
             if (count != -1)
                 printf("file %s has %i words\n", filePath, count);
             else
                 fprintf(stderr, "file %s can not be opened\n", filePath);
         }
-        else if (sb.st_mode & S_IFDIR)
+        else if (S_ISDIR(sb.st_mode))
         {
             printf("%s:\n", filePath);
             size_t baseFileLength = strlen(filePath);
@@ -65,27 +83,27 @@ void printWordStats(const char* filePath, char followSymlinks, int recursionDept
             while (pDirent = readdir(pDir))
             {
                 if (pDirent->d_name[0] != '.'
-                   || (pDirent->d_name[0] == '.' && pDirent->d_name[1] != 0 &&
-                       (pDirent->d_name[1] != '.' || pDirent->d_name[2] != 0)))
+                    || (pDirent->d_name[0] == '.' && pDirent->d_name[1] != 0 &&
+                        (pDirent->d_name[1] != '.' || pDirent->d_name[2] != 0)))
                 {
                     nextFileName[baseFileLength + 1] = 0;
                     strcat(nextFileName + baseFileLength, pDirent->d_name);
-                    printWordStats(nextFileName, followSymlinks, recursionDepthLimit - 1);
+                    printWordStats(nextFileName, followSymlinks, recursionDepthLimit - 1, listOnce);
                 }
             }
             free(nextFileName);
-            closedir (pDir);
+            closedir(pDir);
         }
     }
 }
 
 int main (int argc, char **argv)
 {
-    int followSymlinks = 1, recursionDepth = 0;
+    int followSymlinks = 1, recursionDepth = 0, listOnce = 0;
     opterr = 0;
 
     int characterOption = -1;
-    while ((characterOption = getopt(argc, argv, "sr:")) != -1)
+    while ((characterOption = getopt(argc, argv, "csr:")) != -1)
     {
         switch (characterOption)
         {
@@ -95,16 +113,18 @@ int main (int argc, char **argv)
         case 'r':
             recursionDepth = atoi(optarg);
             break;
+        case 'c':
+            listOnce = 1;
+            break;
         case '?':
             if (optopt == 'r')
-                fprintf (stderr, "Option -%c requires an argument.\n", optopt);
-            else if (isprint (optopt))
-                fprintf (stderr, "Unknown option `-%c'.\n", optopt);
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+            else if (isprint(optopt))
+                fprintf(stderr, "Unknown option `-%c'.\n", optopt);
             else
                 fprintf (stderr, "Unknown option character `\\x%x'.\n", optopt);
-            return 1;
         default:
-            abort ();
+            return 1;
         }
     }
 
@@ -113,9 +133,31 @@ int main (int argc, char **argv)
         fprintf(stderr, "Too many arguments, only 1 filename needed\n");
         return 2;
     }
+
     if (0 == recursionDepth)
         recursionDepth = -1;
-    printWordStats(argv[argc - 1], followSymlinks, recursionDepth);
+
+
+    if (listOnce)
+    {
+        if (!followSymlinks)
+        {
+            fprintf(stderr, "-c has no effect when -s is set\n");
+            listOnce = 0;
+        }
+        else
+        {
+            filepathHashTable = createHashTable(100);
+        }
+    }
+
+    fprintf(stderr, "followSymlinks: %i onlyOnce: %i\n", followSymlinks, listOnce);
+
+    printWordStats(argv[argc - 1], (char) followSymlinks, recursionDepth, (char) listOnce);
+
+    if (filepathHashTable)
+        killHashTable(filepathHashTable);
+
     return 0;
 }
 
