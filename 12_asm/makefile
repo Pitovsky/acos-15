@@ -4,8 +4,5 @@ all: main.o stdio.s
 main.o: main.s
 	nasm -f elf $<
 
-stdio.o: stdio.s
-	nasm -f elf $<
-
 clean:
 	rm *.o asm
