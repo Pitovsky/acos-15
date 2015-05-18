@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <string.h>
-#include <stdlib.h>
+#include <cstdlib.h>
 
 typedef struct Node
 {
@@ -22,6 +22,6 @@ int hash(char* string, int size);
 void InsertData(Hashtable *hashtable, char *key,const void* value);
 void* GetData(Hashtable *hashtable, char *key);
 void DeleteData(Hashtable *hashtable, char *key);
-void DeleteHashtable(Hashtable *hashtable);
+void DeleteHashtable(Hashtable **hashtable);
 Hashtable *ExpandTable(Hashtable *table);
 void Copy(Hashtable* hashtable, Hashtable* new);

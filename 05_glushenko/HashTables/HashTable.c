@@ -7,7 +7,7 @@ Hashtable *CreateHashtable(size_t size){
     Hashtable* hashtable = (Hashtable*)malloc(size * sizeof(Hashtable*));
     hashtable->size = size;
     hashtable->array = (Node**)malloc(size * sizeof(Node*));
-
+    hashtable->NumberOfElements = 0;
     int i;
     for (i = 0; i < size; ++i)
     {
@@ -24,19 +24,22 @@ int hash(char* key, int size)
     return sum % size;
 }
 
-void InsertData(Hashtable *hashtable, char *key, int value){
+void InsertData(Hashtable *hashtable, char *key,const  void* value){
     char *NewString = (char*)malloc(strlen(key)*sizeof(char));
     int i;
-    for(i = 0; i < strlen(key); i++){
+    int CurHash = hash(key, hashtable->size);
+    hashtable->NumberOfElements++;
+    int n = strlen(key);
+    for(i = 0; i < n; i++){
         NewString[i] = key[i];
-        if(hashtable->array[hash(key, hashtable->size)] == NULL){
-            hashtable->array[hash(key, hashtable->size)] == (Node*)malloc(1*sizeof(Node));
-            hashtable->array[hash(key, hashtable->size)]->next = NULL;
-            hashtable->array[hash(key, hashtable->size)]->value = value;
-            hashtable->array[hash(key, hashtable->size)]->key = NewString;
+        if(hashtable->array[CurHash] == NULL){
+            hashtable->array[CurHash] == (Node*)malloc(1*sizeof(Node));
+            hashtable->array[CurHash]->next = NULL;
+            hashtable->array[CurHash]->value = value;
+            hashtable->array[CurHash]->key = NewString;
         }
         else{
-            Node *NextNode = hashtable->array[hash(key, hashtable->size)];
+            Node *NextNode = hashtable->array[CurHash];
             while(NextNode->next != NULL){
                 NextNode = NextNode->next;
             }
@@ -46,30 +49,34 @@ void InsertData(Hashtable *hashtable, char *key, int value){
             NextNode->next->value = value;
         }
     }
+    ExpandTable(hashtable);
 }
 
-char *GetData(Hashtable *hashtable, char *key){
+void *GetData(Hashtable *hashtable, char *key){
     Node *NewNode = hashtable->array[hash(key, hashtable->size)];
     while(NewNode != NULL && strcmp(NewNode->key, key) != 0)
         NewNode = NewNode->next;
     if(NewNode == NULL)
-        return "";
-    return NewNode -> key;
+        return NULL;
+    return NewNode -> value;
 }
 
 void DeleteData(Hashtable *hashtable, char *key){
-    Node *NewNode = hashtable->array[hash(key, hashtable->size)];
-    if(hashtable->array[hash(key, hashtable->size)] == NULL)
+    int CurHash = hash(key, hashtable->size);
+    Node *NewNode = hashtable->array[CurHash];
+    if(hashtable->array[CurHash] == NULL)
         return;
-    if(hashtable->array[hash(key, hashtable->size)]->next == NULL){
-        free(hashtable->array[hash(key, hashtable->size)]);
-        hashtable->array[hash(key, hashtable->size)] = NULL;
+    if(hashtable->array[CurHash]->next == NULL){
+        free(hashtable->array[CurHash]);
+	hashtable->NumberOfElements--;
+        hashtable->array[CurHash] = NULL;
         return;
     }
     if(strcmp(NewNode->key, key) == 0){
         Node *ClearNode = NewNode->next;
         free(NewNode->key);
-        hashtable->array[hash(key, hashtable->size)] = ClearNode;
+	hashtable->NumberOfElements--;
+        hashtable->array[CurHash] = ClearNode;
         return;
     }
     while(NewNode->next != NULL && strcmp(NewNode->next->key, key) !=0){
@@ -79,6 +86,7 @@ void DeleteData(Hashtable *hashtable, char *key){
     free(NewNode->next->key);
     free(NewNode->next);
     NewNode->next = ClearNode;
+    hashtable->NumberOfElements--;
 }
 
 void DeleteHashtable(Hashtable *hashtable){
@@ -96,6 +104,29 @@ void DeleteHashtable(Hashtable *hashtable){
     free(hashtable->array);
 }
 
+void Copy(Hashtable* hashtable, Hashtable* new){
+	if(hashtable == NULL || new == NULL)
+		return;
+	unsigned int i;
+	for(i = 0; i < hashtable->size; i++){
+		Node* CurNode = new->array[i];
+		while(CurNode != NULL){
+			InsertData(hashtable, CurNode->key, CurNode->value);
+			CurNode = CurNode->next;
+		}	
+	}
+}	
+
+Hashtable *ExpandTable(Hashtable *hashtable){
+	if(hashtable->NumberOfElements >= 4/3 * hashtable->size){
+		Hashtable *NewTable = CreateHashtable(hashtable->size*2);
+		Copy(hashtable, NewTable);
+		printf("Table expanded. New size: %d\n", NewTable->size);
+		return NewTable;
+	}
+	else
+		return hashtable;
+}
 
 
 
