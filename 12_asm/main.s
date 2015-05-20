@@ -1,59 +1,3 @@
-%define sizeof(x) x %+ _size
-
-section .data
-
-    argv1 db "-w"
-
-    argvusingstr db "WEAK CHEKING: ON", 10, 0
-    argvusingstrlen equ $ - argvusingstr
-
-    weak db 0
-
-    sys_exit        equ     1
-    sys_read        equ     3
-    sys_write       equ     4
-    sys_open		equ		5
-    sys_close		equ		6
-    sys_brk			equ		45
-    sys_newstat		equ		106
-
-    O_RDONLY		equ		0
-    O_WRONLY		equ		1
-    O_RDWR			equ		2
-
-    stdin           equ     0
-    stdout          equ     1
-    stderr          equ     2
-
-    struc STAT        
-        .st_dev:        resd 1       
-        .st_ino:        resd 1    
-        .st_mode:       resw 1    
-        .st_nlink:      resw 1    
-        .st_uid:        resw 1    
-        .st_gid:        resw 1    
-        .st_rdev:       resd 1        
-        .st_size:       resd 1    
-        .st_blksize:    resd 1    
-        .st_blocks:     resd 1    
-        .st_atime:      resd 1    
-        .st_atime_nsec: resd 1    
-        .st_mtime:      resd 1    
-        .st_mtime_nsec: resd 1
-        .st_ctime:      resd 1    
-        .st_ctime_nsec: resd 1    
-        .unused4:       resd 1    
-        .unused5:       resd 1    
-    endstruc
-
-%define sizeof(x) x %+ _size
-
-section .bss
-
-    string resb 0
-
-section .text
-
 %macro _syscall_3 4
 
 	push edx    ;we don't want corrupt the data (:
@@ -177,38 +121,436 @@ section .text
 
 %endmacro
 
+%macro str_length 2
+
+    mov %1, 0
+    push esi
+
+    mov esi, %2
+
+    .loop:
+
+        cmp byte [esi], 0
+        je .endOfLoop
+
+        inc esi
+        inc %1
+
+        jmp .loop
+
+    .endOfLoop:
+
+        pop esi
+
+%endmacro
+
 %macro FINISH 0-1 0
 	_syscall_exit %1
 %endmacro
 
-global _start
+sys_exit        equ     1
+sys_read        equ     3
+sys_write       equ     4
+sys_open		equ		5
+sys_close		equ		6
+sys_brk			equ		45
+sys_newstat		equ		106
+
+EOF equ -1
+
+O_RDONLY		equ		0
+O_WRONLY		equ		1
+O_RDWR			equ		2
+
+stdin           equ     0
+stdout          equ     1
+stderr          equ     2
+
+%define sizeof(x) x %+ _size
+
+SECTION     .data
+    
+    weakArgument db "-w"
+
+    maxBuffName db "MAX_BUFF="
+    maxBuffNameLength equ $ - maxBuffName
+
+SECTION     .bss
+
+    Org_Break   resd    1
+    TempBuf		resd	1
+
+    buffer_size resd    1
+
+    is_weak     resb    1
+
+SECTION     .text
+
+global      _start
 
 _start:
 
+    ;check the first argument
     xor eax, eax
 
+    mov edx, [esp]
+    cmp dl, 2
+    jne .weak_not_provided
+
     mov edx, [esp + 8]
-    mov ebx, [argv1]
+    mov ebx, [weakArgument]
 
     cmp bl, [edx]
-    jne .not_equal
+    jne .weak_not_provided
 
     mov edx, [esp + 8]
-    mov ebx, [argv1 + 1]
+    mov ebx, [weakArgument + 1]
 
     cmp bl, [edx + 1]
-    jne .not_equal
+    jne .weak_not_provided
 
     mov eax, 1
-    mov [weak], eax
+    mov [is_weak], eax
 
-    mov eax, 4
-    mov ebx, 1
-    mov ecx, argvusingstr
-    mov edx, argvusingstrlen - 1
-    int 80h
+    PRINT "WEAK CHEKING: ON"
+    PUTCHAR 10
 
-    .not_equal:
+    .weak_not_provided:
+
+    mov ebp, esp
+    mov ecx, [ebp]
+
+    add ebp, 8
+
+    argumentsLoop:
+
+        add ebp, 4
+
+    loop argumentsLoop
+
+    .lp:
+
+        str_length edx, dword [ebp]
+
+        mov ecx, maxBuffNameLength
+        mov esi, [ebp]
+        mov edi, maxBuffName
+
+        .compare_str:
+
+            mov eax, dword [esi]
+            cmp al, [edi]
+            jne .not_equal
+
+            inc esi
+            inc edi
+
+            mov eax, esi
+
+            sub eax, dword [ebp]
+
+            cmp eax, edx
+            jge .not_equal
+
+        loop .compare_str
+
+        jmp .found_env
+
+        .not_equal:
+
+            add ebp, 4
+            cmp dword [ebp], 0
+            jne .lp
+
+    PRINT "NO BUFFER_SIZE"
+    PUTCHAR 10
+
+    jmp Exit
+
+    .found_env:
+
+    PRINT "FOUND BUFFER_SIZE = "
+
+    PUTCHAR [esi]
+    PUTCHAR 10
+
+    ; set buffer size
+
+    push edx
+
+    mov edx, [esi]
+    sub edx, 45
+    mov [buffer_size], edx
+
+    pop edx
+
+	; Get the end of bss section
+	xor		ebx, ebx
+	mov		eax, sys_brk
+	int		0x80
+	mov		[Org_Break], eax
+	mov		[TempBuf], eax
+	push	eax
+	
+	; extend it by 1024 bytes
+	pop		ebx
+	add		ebx, 10                     ; <----------- initital_buffer_size
+	mov		eax, sys_brk
+	int		0x80
+    ;push ebx
+
+    mov ecx, dword 20                   ; <----------- buffer_size
+    mov esi, [TempBuf]
+
+    lp1:
+
+        push ecx
+
+        mov     ebx, stdin
+        mov		ecx, esi
+        mov		edx, dword 1
+        mov		eax, sys_read
+        int		0x80
+
+        pop ecx
+
+        mov edx, [esi]
+
+        cmp dl, 0
+        je end_of_file
+
+        inc esi
+
+    loop lp1
+
+    mov ecx, [buffer_size]
+
+    lp2:
+
+        push ecx
+
+        mov     ebx, stdin
+        mov		ecx, esi
+        mov		edx, dword 1
+        mov		eax, sys_read
+        int		0x80
+
+        push edx
+
+        mov edx, [esi]
+
+        cmp dl, 0
+        je end_of_file
+
+        pop edx
+        pop ecx
+
+        inc esi
+
+    loop lp2
+
+	jmp END_OF_BUFFER
+
+    end_of_file:
+
+    PRINT "End"
+
+    PUTCHAR 10
+
+    push dword [TempBuf]
+    call main_magic
+    add esp, 4
+
+	; free memory
+	mov     ebx, [Org_Break]
+    mov     eax, sys_brk
+    int     0x80
+   	
+Exit:
+
+    mov     eax, sys_exit
+    xor     ebx, ebx
+    int     0x80
+
+END_OF_BUFFER:
+
+    PRINT "WASTED!!!111!11!1: BUFFER IS ENDED"
+    PUTCHAR 10
+    jmp Exit
+
+main_magic:
+
+    ;
+    ; here we've got argument on the stack, so we keep going on
+    ;
+
+    mov ebp, esp
+    add ebp, 4
+    mov esi, [ebp]
+
+    xor ecx, ecx
+
+    str_loop:
+
+        cmp dword [esi], 0
+        je .end_of_str
+
+        inc ecx
+        inc esi
+
+    jmp str_loop
+
+    .end_of_str:
+
+    mov edi, esi
+    mov esi, [ebp]
+
+    sub edi, 1
+
+    push ecx
+    push edi
+    push esi
+
+    .cmp_str_loop:
+
+        mov eax, [edi]
+        cmp al, [esi]
+        jne not_polindrom
+
+        dec edi
+        inc esi
+
+    loop .cmp_str_loop
+
+    add esp, 12
+
+    PRINT "YEP"
+    PUTCHAR 10
+    ret
+
+not_polindrom:
+
+    pop esi
+    pop edi
+    pop ecx
+
+    cmp byte [is_weak], 0
+    je .is_not_weak
+
+    mov byte [is_weak], 0
+
+    xor eax, eax
+
+    push esi
+
+    .weak_predecessor:
+
+        cmp byte [esi], 32
+        je .ecx_decrease
+
+        cmp byte [esi], 44
+        je .ecx_decrease
+
+        cmp byte [esi], 46
+        je .ecx_decrease
+
+        inc eax
+
+        .ecx_decrease:
+
+            inc esi
+
+    loop .weak_predecessor
+
+    pop esi
+
+    mov ecx, eax
+
+    .cmp_weak_str_loop:
+
+        .weak_processor_loop_esi:
+
+            push 1
+            push 1
+            push esi
+            call weak_processor
+            pop esi
+            add esp, 4
+            pop eax
+
+            cmp eax, 1
+            je .weak_processor_loop_esi
+
+        .weak_processor_loop_edi:
+
+            push 1
+            push 0
+            push edi
+            call weak_processor
+            pop edi
+            add esp, 4
+            pop eax
+
+            cmp eax, 1
+            je .weak_processor_loop_edi
+
+        mov eax, [edi]
+        cmp al, [esi]
+        jne .is_not_weak
+
+        dec edi
+        inc esi
+
+    loop .cmp_weak_str_loop
+
+    .is_weak:
+
+        PRINT "WEAK"
+        PUTCHAR 10
+
+        ret
+
+    .is_not_weak:
+
+        PRINT "NOOPE"
+        PUTCHAR 10
+
+        ret
+
+weak_processor:
+
+    mov ebp, esp
+    add ebp, 4
+
+    mov eax, [ebp]
+
+    cmp byte [eax], 32
+    je .remove_weakness
+
+    cmp byte [eax], 44
+    je .remove_weakness
+
+    cmp byte [eax], 46
+    je .remove_weakness
+
+    mov dword [ebp + 8], 0
+    jmp .ord_exit
+
+    .remove_weakness:
+
+        add byte [ebp], 1
+
+        cmp byte [ebp + 4], 0
+        je .second_var
+        jmp .ord_exit
+
+    .second_var:
+
+        sub byte [ebp], 2
+
+    .ord_exit:
+
+        ret
 
 
-    FINISH 0
+
