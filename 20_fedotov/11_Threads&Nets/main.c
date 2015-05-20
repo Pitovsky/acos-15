@@ -30,14 +30,6 @@
 int SocketFD;
 struct sockaddr_in OurAddress;
 
-struct DatMessage{
-    int NameLen;
-    int DataSize;
-    char Name[1 << 10];
-    char Data[1 << 22];
-};
-
-
 long long ToSend(int SocketFileDesc, void* OurMessage, int MessageSize, int Flags) {
     long long Sent = 0;
     
@@ -169,7 +161,7 @@ int main(int argc, const char * argv[]) {
             exit(1);
         }
         
-        listen(SocketFD, HowManyMessages);
+        listen(SocketFD, 30);
         
         printf("_-_-_-__-_-_-_Server Has started without errors_-_-_-__-_-_-_\n");
         
@@ -197,34 +189,19 @@ int main(int argc, const char * argv[]) {
     
     else {
         printf("Enter IP : ");
-
-//        printf("/\.'.'.'.'.You're A Client!.'.'.'.'.'/\\n");
-//        printf("\/-_-_-____-_-_-____-_-_-____-_-_-___\/\n");
-//        
-//        int PORT;
-//        char* IP = malloc(255);
-//        printf("Enter Port Number : ");
-//        scanf("%d", &PORT);
-//        printf("Enter IP Number : ");
-//        scanf("%s", IP);
         char * IP = malloc(255);
         scanf("%s", IP);
 
         OurAddress.sin_addr.s_addr = inet_addr(IP);
 
         
-        
-        
-//        OurAddress.sin_family = AF_INET;
-//        OurAddress.sin_port = htons(PORT);
-//        OurAddress.sin_addr.s_addr = inet_addr(IP);
         if(connect(SocketFD, (struct sockaddr *)&OurAddress, sizeof(OurAddress)) < 0){
             perror("Client connection Error");
             exit(1);
         }
         
         
-        for(int i = 0; i < HowManyMessages; ++i){
+        for(int i = 0; i < 30; ++i){
             char* FileName = malloc(1 << 10);
             char* Data = malloc(2000000000);
             int NameLen = 0;
