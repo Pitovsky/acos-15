@@ -1,0 +1,7 @@
+all: decrypt
+
+decrypt: dechifer_1.o
+	gcc dechifer_1.o -o Dechifer -lcrypto
+
+dechifer_1.o:
+	gcc  -c dechifer_1.c
