@@ -21,52 +21,111 @@
 #include <math.h>
 #include <semaphore.h>
 
+char* Splitter;
+
+char *getString(FILE* OurFile)
+{
+    char *string = (char *)malloc(sizeof(char));
+    int i = 0;
+    char c;
+    for (c = '\0'; (c=getc(OurFile))!='\n' && c != EOF; i++)
+        (string = (char *)realloc(string, i+1), *(string + i) = c);
+    *(string + i) = '\0';
+    return string;
+}
+
+
 
 int main(int argc, const char * argv[]) {
+    Splitter = malloc(255);
+    printf("Do You Wanna Set a Splitter or '_Bu_' is good for you?\n Use Yes or No\n");
+    char* Command = malloc(255);
+    scanf("%s", Command);
+    if(!strcmp(Command, "Yes")) {
+        printf("Enter a Splitter: ");
+        scanf("%s", Splitter);
+    }
+    else
+        Splitter = "_Bu_";
+    
     if(!strcmp(argv[1], "-m")) {
         char* FirstOutput = malloc(1024);
         char* SecondOutput = malloc(1024);
-        FILE* First = popen(argv[2], "r");
-        FILE* Second = popen(argv[3], "r");
+        char* FirstString = malloc(1024);
+        char* SecondString = malloc(1024);
         char* FirstValue = malloc(1024);
         char* SecondValue = malloc(1024);
+        FILE* First = popen(argv[2], "r");
+        FILE* Second = popen(argv[3], "r");
+        while (wait(0) >0) {}
+        int SplitterSize = strlen(Splitter);
+        
+        fgets(FirstString, 1024, First);
+        FirstString[strlen(FirstString) - 1] = '\0';
+        fgets(SecondString, 1024, Second);
+        SecondString[strlen(SecondString) - 1] = '\0';
+        int FirstBound = strstr(FirstString, Splitter) - FirstString;
+        int SecondBound = strstr(SecondString, Splitter) - SecondString;
+        strncpy(FirstOutput, FirstString, FirstBound);
+        strcpy(FirstValue, (char*)(FirstString + FirstBound + SplitterSize));
+        strncpy(SecondOutput, SecondString, SecondBound);
+        strcpy(SecondValue, SecondString + SecondBound + SplitterSize);
 
         while (!feof(First) && !feof(Second)) {
-            
-            fscanf(First, "%s\t%s", FirstOutput, FirstValue);
-            fscanf(Second, "%s\t%s", SecondOutput, SecondValue);
-            if(!strcmp(FirstOutput, SecondOutput))
-                printf("%s\t%s\t%s\t%s\n", FirstOutput, FirstValue, SecondOutput, SecondValue);
+                while (strcmp(FirstOutput, SecondOutput) < 0 && !feof(First)) {
+                printf("%s%s%s\n", FirstOutput, Splitter,  FirstValue);
+                fgets(FirstString, 1024, First);
+                FirstString[strlen(FirstString) - 1] = '\0';
+                FirstBound = strstr(FirstString, Splitter) - FirstString;
+                strncpy(FirstOutput, FirstString, FirstBound);
+                strcpy(FirstValue, FirstString + FirstBound + SplitterSize);
+            }
+            if(feof(First))
+                break;
+            if(!strcmp(FirstOutput, SecondOutput)) {
+                printf("%s%s%s%s%s%s%s\n", FirstOutput, Splitter, FirstValue, Splitter, SecondOutput, Splitter, SecondValue);
+                fgets(FirstString, 1024, First);
+                FirstString[strlen(FirstString) - 1] = '\0';
+                fgets(SecondString, 1024, Second);
+                SecondString[strlen(SecondString) - 1] = '\0';
+
+                int FirstBound = strstr(FirstString, Splitter) - FirstString;
+                int SecondBound = strstr(SecondString, Splitter) - SecondString;
+                strncpy(FirstOutput, FirstString, FirstBound);
+                strcpy(FirstValue, (char*)(FirstString + FirstBound + SplitterSize));
+                strncpy(SecondOutput, SecondString, SecondBound);
+                strcpy(SecondValue, SecondString + SecondBound + SplitterSize);
+            }
             else {
-                if(atoi(FirstOutput) < atoi(SecondOutput)) {
-                    while (!feof(First) && strcmp(FirstOutput, SecondOutput)) {
-                        fscanf(First, "%s\t%s", FirstOutput, FirstValue);
-                    }
-                    if(feof(First))
-                        break;
-                    else
-                        printf("%s\t%s\t%s\t%s\n", FirstOutput, FirstValue, SecondOutput, SecondValue);
-    
+                while (!feof(Second) && strcmp(FirstOutput, SecondOutput) > 0) {
+                    printf("%s%s%s\n", SecondOutput, Splitter, SecondValue);
+                    fgets(SecondString, 1024, Second);
+                    SecondString[strlen(SecondString) - 1] = '\0';
+                    SecondBound = strstr(SecondString, Splitter) - SecondString;
+                    strncpy(SecondOutput, SecondString, SecondBound);
+                    strcpy(SecondValue, SecondString + SecondBound + SplitterSize);
                 }
-                else {
-                    while (!feof(Second) && strcmp(FirstOutput, SecondOutput)) {
-                        fscanf(Second, "%s\t%s", SecondOutput, SecondValue);
-                    }
-                    if(feof(Second))
-                        break;
-                    else
-                        printf("%s\t%s\t%s\t%s\n", FirstOutput, FirstValue, SecondOutput, SecondValue);
-                }
+                if(feof(Second))
+                    break;
+        
             }
         }
         
         while (!feof(First)) {
-            fscanf(First, "%s\t%s", FirstOutput, FirstValue);
-            printf("%s\t%s\n", FirstOutput, FirstValue);
+            fgets(FirstString, 1024, First);
+            FirstString[strlen(FirstString) - 1] = '\0';
+            int FirstBound = strstr(FirstString, Splitter) - FirstString;
+            strncpy(FirstOutput, FirstString, FirstBound);
+            strcpy(FirstValue, FirstString + FirstBound + SplitterSize);
+            printf("%s%s%s\n", FirstOutput, Splitter, FirstValue);
         }
         while (!feof(Second)) {
-            fscanf(Second, "%s\t%s", SecondOutput, SecondValue);
-            printf("%s\t%s\n", SecondOutput, SecondValue);
+            fgets(SecondString, 1024, Second);
+            SecondString[strlen(SecondString) - 1] = '\0';
+            int SecondBound = strstr(SecondString, Splitter) - SecondString;
+            strncpy(SecondOutput, SecondString, SecondBound);
+            strcpy(SecondValue, SecondString + SecondBound + SplitterSize);
+            printf("%s%s%s\n", SecondOutput, Splitter, SecondValue);
         }
 
         
@@ -117,7 +176,7 @@ int main(int argc, const char * argv[]) {
                     fgets(Res, 100, OurResult[i]);
                     Res[strlen(Res) - 1] = '\0';
                     if(strcmp(Res, ""))
-                        printf("%s\t", Res);
+                        printf("%s%s", Res, Splitter);
                     else
                         printf("----End Of %d Process----\n", i);
 
