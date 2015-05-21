@@ -111,22 +111,22 @@ int main( int argc, const char * argv[] ) {
                 continue;
             }
             users[i] = userSock;
-            pthread_t listenThr;
-            pthread_create(&listenThr, NULL, serverThreadFunc, (void*)&i);
+            pthread_t serverThread;
+            pthread_create(&serverThread, NULL, serverThreadFunc, (void*)&i);
         }
     }
     
     if (strcmp( argv[1], "client" ) == 0){
         
-        pthread_t gettingThr;
-        pthread_create(&gettingThr, NULL, clientThreadFunc, NULL);
+        pthread_t clientThread;
+        pthread_create(&clientThread, NULL, clientThreadFunc, NULL);
         char input[512];
         
         while(1){
             gets( input );
             if (strcmp( input, "exit" ) == 0){
-                pthread_cancel( gettingThr );
-                pthread_join( gettingThr, NULL );
+                pthread_cancel( clientThread );
+                pthread_join( clientThread, NULL );
                 break;
             }
             ssize_t length = strlen(input);
