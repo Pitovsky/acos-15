@@ -84,83 +84,47 @@ void chat(TList* list, char* message, client* id){
 	sendtoall(list, buf);
 }
 
-//char* itoa(int val, int base){
-//	static char buf[32] = {0};
-//	int i = 30;
-//	for(; val && i ; --i, val /= base)
-//        buf[i] = "0123456789abcdef"[val % base];
-//	return &buf[i+1];
-//}
-int socketRead(int* arg, int sendarg)
-{
+void sendfile(int readsock, int sendsock){
     char buf[1024];
-    int socket_ofclient = (*arg);
-
-    // считывание данных от клиента
     int readed = 0;
     int name_length, content_length;
-    int filefd;
 
     // 1. получение длины имени файла
-    readed = read(socket_ofclient, buf, sizeof(int));
+    readed = read(readsock, buf, sizeof(int));
     if(readed != sizeof(int)) {
         perror("The read of namelenght is wrong");
         exit(1);
     }
+    send(sendsock,buf, sizeof(int) +1, 0);
     name_length = *((int *) buf);
-    printf("[%d] File length is %d\n", sendarg, name_length);
-    send(sendarg,buf, sizeof(int) +1, 0);
 
     // 2. получаение имени файла
-    readed = read(socket_ofclient, buf, name_length);
+    readed = read(readsock, buf, name_length);
     if(readed != name_length) {
         perror("The read of filename is wrong");
         exit(1);
     }
-
     buf[name_length] = '\0';
-    send(sendarg,buf, sizeof(int) +1, 0);
-
-//    filefd = open(buf, O_WRONLY | O_CREAT, 0775);//crerating of file(->client)
-//    if(filefd < 0) {
-//        perror("Can't open file");
-//        exit(1);
-//    }
-//    printf("[%d] File name is %s\n", socket_ofclient, buf);
+    send(sendsock,buf, sizeof(int) +1, 0);
 
     // 3. получение длины содержимого файла
-    readed = read(socket_ofclient, buf, sizeof(int));
+    readed = read(readsock, buf, sizeof(int));
     if(readed != sizeof(int)) {
         perror("The read of filelength is wrong");
         exit(1);
     }
     content_length = *((int *) buf);
-    send(sendarg, buf, sizeof(int) + 1, 0);
-    printf("[%d] Content length is %d\n", socket_ofclient, content_length);
+    send(sendsock, buf, sizeof(int) + 1, 0);
 
     // 4. получение содержимого файла
     readed = 0;
     int internal_readed = 0;
     do {
-        internal_readed = read(socket_ofclient, buf, 1023);
-        send(sendarg, buf, 1023, 0);
-        //write(filefd, buf, internal_readed);
-
+        internal_readed = read(readsock, buf, 1023);
+        send(sendsock, buf, 1023, 0);
         buf[internal_readed] = '\0';
-        printf("[%d] Read: %s\n", socket_ofclient, buf);
-
         readed += internal_readed;
     } while(readed < content_length);
-
-    printf("[%d] End of writing file\n", socket_ofclient);
-
-    //Всё, пора заканчивать
-    close(filefd);
-    //close(socket_ofclient);
-
-    //printf("[%d] Closed all file descriptors\n", socket_ofclient);
-
-    return 0;
 }
 
 int main(int argc, char** argv) {
@@ -237,7 +201,6 @@ int main(int argc, char** argv) {
 		while (tmp != NULL){
 			if (FD_ISSET(tmp->sock, &foread)){
 				bytes_read = recv(tmp->sock, buf, 1024, 0);
-				//printf("%d bytes were recieved\n", bytes_read);
 				if (bytes_read <= 0){//client left
 					client* tmp1 = tmp->next;
 					char msg[40];
@@ -278,24 +241,24 @@ int main(int argc, char** argv) {
 				} else if (strncmp( buf, "/encrypted ", 11 ) == 0 ) {
 					char* msg_recv = strchr(buf + 11, ' ');
 					*msg_recv = '\0';//там где заканчивается никнейм
-					msg_recv++;
+                    msg_recv++;
 					client* tmp1 = clients.begin;
 					int flag = 0;
 
 					while (tmp1 != NULL) {//поиск адресата в списке
 						if (strcmp(buf + 11, tmp1->nickname) == 0){//отправкa
-							char rsp[1060];
+							char rsp[120];
 							strcpy(rsp, tmp->nickname);
 							strcat(rsp, " requested you public key.\n");
-							//send(tmp1->sock, rsp, strlen(rsp)+1, 0);
+							send(tmp1->sock, rsp,strlen(rsp) + 1, 0);
 							flag = 1;
-							socketRead(&tmp->sock, tmp1->sock);
+							sendfile(tmp->sock, tmp1->sock);
 							break;
 						}
 						tmp1 = tmp1->next;
 					}
 					if (flag == 0) {
-						send(tmp->sock, "Name or client's key wasn't found.\n", 36, 0);
+						send(tmp->sock, "Name wasn't found.\n", 36, 0);
 					}
                 }
 			}

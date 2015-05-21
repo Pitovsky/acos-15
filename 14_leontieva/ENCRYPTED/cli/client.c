@@ -57,7 +57,6 @@ void send_file(char* path, int sock){
         perror("Problems with opening file");
         exit(errno);
     }
-
     //здесь определим размер открытого файла
     struct stat info_file;
     if (fstat(fd, &info_file) == -1) {
@@ -65,7 +64,6 @@ void send_file(char* path, int sock){
         exit(errno);
     }
     int info_length = info_file.st_size;//длина содержимого
-
     //получаем длину имени файла
     int name_length = fileNameLengthByPath(path);
 
@@ -87,16 +85,19 @@ void send_file(char* path, int sock){
         perror("Problems with sending the length of file-name");
         exit(errno);
     }
+
     res = send(sock, name, name_length, 0);
     if(res == -1) {
         perror("Problems with sending the name of file");
         exit(errno);
     }
+
     res = send(sock, (char*)(&info_length), sizeof(int), 0);
     if(res == -1) {
         perror("Problems with sending the length of information");
         exit(errno);
     }
+
     res = send(sock, info, info_length, 0);
     if(res == -1) {
         perror("Problems with sending the information");
@@ -142,8 +143,6 @@ int recv_file(int servsock){
         exit(1);
     }
     content_length = *((int *) buf);
-    printf("[%d] Content length is %d\n", servsock, content_length);
-
     // 4. получение содержимого файла
     readed = 0;
     int internal_readed = 0;
@@ -152,12 +151,10 @@ int recv_file(int servsock){
         write(filefd, buf, internal_readed);
 
         buf[internal_readed] = '\0';
-        printf("[%d] Read: %s\n", servsock, buf);
-
         readed += internal_readed;
     } while(readed < content_length);
 
-    printf("[%d] End of writing file\n", servsock);
+    printf("I recieved a file", servsock);
     return filefd;
 }
 
@@ -260,7 +257,7 @@ int main(int argc, char** argv) {
 			printf("%s", buf);
             char* buf1 = strchr(buf, ' ');
             buf1++;
-            if (strcmp(buf1, "requested your public key") == 0){
+            if (strcmp(buf1, "requested your public key") == 0){//отправка паблик кея
                 send_file(PUBLIC, sock);
             }
 		} else if(FD_ISSET(0, &foread)){
