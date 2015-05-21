@@ -49,10 +49,17 @@ int getword(const char* stream, char* output)
 }
 int progSepar(char ch)
 {
-    if (ch != '|' && ch != '&' && ch != 0 && ch != '(' && ch != ')' && ch != '>' && ch != '<')
+    if (ch != '|' && ch != '&' && ch != 0 && ch != '>' && ch != '<')
         return -1;
     else
         return 0;
+}
+int posNextBrake(char* input)
+{
+    int i = 0;
+    while (input[i] != 0 && (input[i] != '"' || (i > 0 && input[i - 1] == '\\')))
+        ++i;
+    return i + 1;
 }
 int oneProgPars(char*** output, const char* callstr)
 {
@@ -471,7 +478,11 @@ int oneStrCall(const char* callstr, char* path, JobsList* jobs, int infdFrom)
             strcpy(progNames[i], allsargv[i][0]);
             progNames[i][strlen(allsargv[i][0])] = 0;
             while(progSepar(*nextProg) != 0)
+            {
                 ++nextProg;
+                if (*nextProg == '"' && (*(nextProg - 1) != '\\'))
+                    nextProg = nextProg + posNextBrake(nextProg + 1);
+            }
             if (*nextProg == '>')
             {
                 char filename[PATH_MAX];
@@ -516,7 +527,11 @@ int oneStrCall(const char* callstr, char* path, JobsList* jobs, int infdFrom)
             else if (*nextProg == '&')
                 BGflag = RUN_BACKGROUND;
             while(*nextProg != 0 && (progSepar(*nextProg) == 0 || *nextProg <= ' '))
+            {
                 ++nextProg;
+                if (*nextProg == '"' && (*(nextProg - 1) != '\\'))
+                    nextProg = nextProg + posNextBrake(nextProg + 1);
+            }
         }
         if (run_comand_chain(infd, outfd, 2, progCount, progNames, allsargv, &code, jobs, BGflag) != 0)
         {
