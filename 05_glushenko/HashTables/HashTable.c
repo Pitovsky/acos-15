@@ -24,7 +24,7 @@ int hash(char* key, int size)
     return sum % size;
 }
 
-void InsertData(Hashtable *hashtable, char *key,const  void* value){
+void InsertData(Hashtable *hashtable, char *key, const  void* value){
     char *NewString = (char*)malloc(strlen(key)*sizeof(char));
     int i;
     int CurHash = hash(key, hashtable->size);
@@ -32,6 +32,7 @@ void InsertData(Hashtable *hashtable, char *key,const  void* value){
     int n = strlen(key);
     for(i = 0; i < n; i++){
         NewString[i] = key[i];
+    }
         if(hashtable->array[CurHash] == NULL){
             hashtable->array[CurHash] == (Node*)malloc(1*sizeof(Node));
             hashtable->array[CurHash]->next = NULL;
@@ -48,10 +49,8 @@ void InsertData(Hashtable *hashtable, char *key,const  void* value){
             NextNode->next->key = NewString;
             NextNode->next->value = value;
         }
-    }
     ExpandTable(hashtable);
 }
-
 void *GetData(Hashtable *hashtable, char *key){
     Node *NewNode = hashtable->array[hash(key, hashtable->size)];
     while(NewNode != NULL && strcmp(NewNode->key, key) != 0)
