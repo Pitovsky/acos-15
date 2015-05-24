@@ -64,7 +64,6 @@ void send_file(char* path, int sock){//works
     //получаем имя файла
     char name[name_length];
     memcpy(name, path + strlen(path) - name_length, name_length);
-    printf("Filename %s\n", name);
     //получаем содержимое файла
     char info[info_length];
     int res = read(fd, info, info_length);
@@ -238,6 +237,9 @@ int main(int argc, char** argv) {
 				return 0;
 			}
 			printf("%s", buf);
+			if (strncmp(buf, "Your pubkey was requsted by ",28) == 0){
+                recv_file(sock);
+			}
 		} else if(FD_ISSET(0, &foread)){
 			if (fgets(buf, 1024, stdin) == NULL){
 				perror("fgets");
@@ -274,11 +276,16 @@ int main(int argc, char** argv) {
                         perror("write msg to file");
                         exit(1);
                     }
-                    chifer("./msg.txt", PUBLIC);
                     send(sock, buf, strlen(buf) +1, 0);
                     recv_file(sock);
-					//printf("recieved file\n");
-				} else {//значит там либо нет имени,либо только имя и больше ничего
+                    char name [40]; //имя публичного ключа собеседника
+                    strncpy(name, buf+11, pos - buf-11);
+                    strcat(name, ".key");
+                    chifer("./msg.txt", name);
+                    printf("began to send rsa file\n");
+                    send_file("rsa.file",sock);
+                    printf("success(rsa.file)\n");
+				} else {//либо нет имени,либо только имя и больше ничего
 					printf( "Incorrect input format.\n" );
 				}
 			}else {

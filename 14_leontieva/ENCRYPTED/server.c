@@ -325,8 +325,9 @@ int main(int argc, char** argv) {
 						if (strcmp(buf + 11, tmp1->nickname) == 0){//отправкa
                             printf("%s and %s have a secret talk\n", tmp->nickname, tmp1->nickname);
 							char rsp[120];
-							strcpy(rsp, "Your pubkey requsted by ");
+							strcpy(rsp, "Your pubkey was requsted by ");
 							strcat(rsp,tmp->nickname);
+							strcat(rsp, "\n");
 							//printf("%s\n", rsp);
 							if(send(tmp1->sock, rsp,strlen(rsp) + 1, 0) != strlen(rsp) +1){
                                 perror("send msg about pubkey");
@@ -338,6 +339,8 @@ int main(int argc, char** argv) {
 							strcat(filename, tmp1->nickname);
 							strcat(filename, ".key");
 							send_file(filename, tmp->sock);
+							recv_file(tmp->sock);//зашифрованный;
+							send_file("rsa.file",tmp1->sock);
 							flag = 1;
 							break;
 						}
