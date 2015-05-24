@@ -16,7 +16,7 @@
 
 #define PRIVAT "./privat.key"
 
-RSA* chifer(char* tmp_path, char* pub_key_path){
+void chifer(char* tmp_path, char* pub_key_path){
     //Структура для хранения открытого ключа
     RSA *pubKey = NULL;
     unsigned char *ptext, *ctext;
@@ -46,7 +46,7 @@ RSA* chifer(char* tmp_path, char* pub_key_path){
 
         write(outf, ctext, outlen);
     }
-    return pubKey;
+    //return pubKey;
 }
 void send_file(char* path, int sock){//works
     int fd = open(path, O_RDONLY);
@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
                         perror("write msg to file");
                         exit(1);
                     }
-
+                    chifer("./msg.txt", PUBLIC);
                     send(sock, buf, strlen(buf) +1, 0);
                     recv_file(sock);
 					//printf("recieved file\n");
