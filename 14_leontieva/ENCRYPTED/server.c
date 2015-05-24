@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <string.h>
 #include <sys/select.h>
+#include <errno.h>
 
 // двусвязный список клиентов
 typedef struct client {
@@ -84,48 +85,123 @@ void chat(TList* list, char* message, client* id){
 	sendtoall(list, buf);
 }
 
-void sendfile(int readsock, int sendsock){
+int recv_file(int socket_ofclient){//works
     char buf[1024];
+    // считывание данных от клиента
     int readed = 0;
     int name_length, content_length;
+    int filefd;
 
     // 1. получение длины имени файла
-    readed = read(readsock, buf, sizeof(int));
+    readed = read(socket_ofclient, buf, sizeof(int));
     if(readed != sizeof(int)) {
-        perror("The read of namelenght is wrong");
+        perror("The first read is wrong");
         exit(1);
     }
-    send(sendsock,buf, sizeof(int) +1, 0);
     name_length = *((int *) buf);
 
     // 2. получаение имени файла
-    readed = read(readsock, buf, name_length);
+    readed = read(socket_ofclient, buf, name_length);
     if(readed != name_length) {
-        perror("The read of filename is wrong");
+        perror("The second read is wrong");
         exit(1);
     }
+
     buf[name_length] = '\0';
-    send(sendsock,buf, sizeof(int) +1, 0);
+    filefd = open(buf, O_WRONLY | O_CREAT, 0775);
+    if(filefd < 0) {
+        perror("Can't open file");
+        exit(1);
+    }
+    //printf("[%d] File name is %s\n", socket_ofclient, buf);
 
     // 3. получение длины содержимого файла
-    readed = read(readsock, buf, sizeof(int));
+    readed = read(socket_ofclient, buf, sizeof(int));
     if(readed != sizeof(int)) {
-        perror("The read of filelength is wrong");
+        perror("The third read is wrong");
         exit(1);
     }
     content_length = *((int *) buf);
-    send(sendsock, buf, sizeof(int) + 1, 0);
+    //printf("[%d] Content length is %d\n", socket_ofclient, content_length);
 
     // 4. получение содержимого файла
     readed = 0;
     int internal_readed = 0;
     do {
-        internal_readed = read(readsock, buf, 1023);
-        send(sendsock, buf, 1023, 0);
+        internal_readed = read(socket_ofclient, buf, 1023);
+        write(filefd, buf, internal_readed);
         buf[internal_readed] = '\0';
         readed += internal_readed;
     } while(readed < content_length);
+
+    close(filefd);
+    return 0;
 }
+void send_file(char* path, int sock){//works
+    printf("Begin to open file");
+    int fd = open(path, O_RDONLY);
+    if(fd == -1) {
+        perror("Problems with opening file");
+        exit(errno);
+    }
+    //здесь определим размер открытого файла
+    //printf("Find a size of opened file\n");
+    struct stat info_file;
+    if (fstat(fd, &info_file) == -1) {
+        perror("fstat");
+        exit(errno);
+    }
+    int info_length = info_file.st_size;//длина содержимого
+    //получаем длину имени файла
+    int name_length = fileNameLengthByPath(path);
+    //получаем имя файла
+    char name[name_length];
+    memcpy(name, path + strlen(path) - name_length, name_length);
+    //получаем содержимое файла
+    char info[info_length];
+    int res = read(fd, info, info_length);
+    if(res < 0) {
+        perror("Problems with reading from file");
+        exit(errno);
+    }
+    //потом отправляем сообщение серверу
+    res = send(sock, (char*)(&name_length), sizeof(int), 0);
+    if(res == -1) {
+        perror("Problems with sending the length of file-name");
+        exit(errno);
+    }
+
+    res = send(sock, name, name_length, 0);
+    if(res == -1) {
+        perror("Problems with sending the name of file");
+        exit(errno);
+    }
+
+    res = send(sock, (char*)(&info_length), sizeof(int), 0);
+    if(res == -1) {
+        perror("Problems with sending the length of information");
+        exit(errno);
+    }
+
+    res = send(sock, info, info_length, 0);
+    if(res == -1) {
+        perror("Problems with sending the information");
+        exit(errno);
+    }
+    close(fd);
+}
+// возвращает длину файла по его пути (или тупо имени файла)
+int fileNameLengthByPath(const char * filePath) {
+    if(filePath == NULL)
+        return 0;
+
+    if(strrchr(filePath, '/') == NULL)
+        return strlen(filePath);
+
+    int lastSlashPosition = (int)(strrchr(filePath, '/') - filePath);
+    return strlen(filePath) - lastSlashPosition - 1;
+}
+
 
 int main(int argc, char** argv) {
     if (argc != 3){
@@ -191,6 +267,7 @@ int main(int argc, char** argv) {
 			strcpy(tmp1->nickname, name);
 			list_push_back(&clients, tmp1);
 			printf ("%s joined\n", tmp1->nickname);
+			recv_file(tmp1->sock);
 			char msg[265];
 			strcpy(msg, tmp1->nickname);
 			strcat(msg," joined\n");
@@ -241,18 +318,27 @@ int main(int argc, char** argv) {
 				} else if (strncmp( buf, "/encrypted ", 11 ) == 0 ) {
 					char* msg_recv = strchr(buf + 11, ' ');
 					*msg_recv = '\0';//там где заканчивается никнейм
-                    msg_recv++;
+                    msg_recv++;//there must be writing to file
 					client* tmp1 = clients.begin;
 					int flag = 0;
-
 					while (tmp1 != NULL) {//поиск адресата в списке
 						if (strcmp(buf + 11, tmp1->nickname) == 0){//отправкa
+                            printf("%s and %s have a secret talk\n", tmp->nickname, tmp1->nickname);
 							char rsp[120];
-							strcpy(rsp, tmp->nickname);
-							strcat(rsp, " requested you public key.\n");
-							send(tmp1->sock, rsp,strlen(rsp) + 1, 0);
+							strcpy(rsp, "Your pubkey requsted by ");
+							strcat(rsp,tmp->nickname);
+							//printf("%s\n", rsp);
+							if(send(tmp1->sock, rsp,strlen(rsp) + 1, 0) != strlen(rsp) +1){
+                                perror("send msg about pubkey");
+                                exit(1);
+							}
 							flag = 1;
-							sendfile(tmp->sock, tmp1->sock);
+							char filename[120];
+							strcpy(filename,"./");
+							strcat(filename, tmp1->nickname);
+							strcat(filename, ".key");
+							send_file(filename, tmp->sock);
+							flag = 1;
 							break;
 						}
 						tmp1 = tmp1->next;

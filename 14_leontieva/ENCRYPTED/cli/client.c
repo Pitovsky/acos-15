@@ -14,9 +14,7 @@
 #include <sys/stat.h>
 #include <errno.h>
 
-//Имена ключевых файлов
 #define PRIVAT "./privat.key"
-//#define PUBLIC "./public.key"
 
 RSA* chifer(char* tmp_path, char* pub_key_path){
     //Структура для хранения открытого ключа
@@ -50,27 +48,23 @@ RSA* chifer(char* tmp_path, char* pub_key_path){
     }
     return pubKey;
 }
-void send_file(char* path, int sock){
-    //сообщение у нас будет создаваться: открываем файл и формируем сообщение
+void send_file(char* path, int sock){//works
     int fd = open(path, O_RDONLY);
     if(fd == -1) {
         perror("Problems with opening file");
         exit(errno);
     }
-    //здесь определим размер открытого файла
     struct stat info_file;
     if (fstat(fd, &info_file) == -1) {
         perror("fstat");
         exit(errno);
     }
     int info_length = info_file.st_size;//длина содержимого
-    //получаем длину имени файла
     int name_length = fileNameLengthByPath(path);
-
     //получаем имя файла
     char name[name_length];
     memcpy(name, path + strlen(path) - name_length, name_length);
-
+    printf("Filename %s\n", name);
     //получаем содержимое файла
     char info[info_length];
     int res = read(fd, info, info_length);
@@ -78,43 +72,39 @@ void send_file(char* path, int sock){
         perror("Problems with reading from file");
         exit(errno);
     }
-
-    //потом отправляем сообщение серверу
     res = send(sock, (char*)(&name_length), sizeof(int), 0);
     if(res == -1) {
         perror("Problems with sending the length of file-name");
         exit(errno);
     }
-
     res = send(sock, name, name_length, 0);
     if(res == -1) {
         perror("Problems with sending the name of file");
         exit(errno);
     }
-
     res = send(sock, (char*)(&info_length), sizeof(int), 0);
     if(res == -1) {
         perror("Problems with sending the length of information");
         exit(errno);
     }
-
     res = send(sock, info, info_length, 0);
     if(res == -1) {
         perror("Problems with sending the information");
         exit(errno);
     }
+    close(fd);
 }
 
-
-int recv_file(int servsock){
+int recv_file(int sock){//works
     char buf[1024];
-    // считывание данных
+
+    // считывание данных от клиента
     int readed = 0;
     int name_length, content_length;
     int filefd;
 
     // 1. получение длины имени файла
-    readed = read(servsock, buf, sizeof(int));
+    readed = read(sock, buf, sizeof(int));
     if(readed != sizeof(int)) {
         perror("The first read is wrong");
         exit(1);
@@ -122,7 +112,7 @@ int recv_file(int servsock){
     name_length = *((int *) buf);
 
     // 2. получаение имени файла
-    readed = read(servsock, buf, name_length);
+    readed = read(sock, buf, name_length);
     if(readed != name_length) {
         perror("The second read is wrong");
         exit(1);
@@ -134,28 +124,27 @@ int recv_file(int servsock){
         perror("Can't open file");
         exit(1);
     }
-    printf("[%d] File name is %s\n", servsock, buf);
 
     // 3. получение длины содержимого файла
-    readed = read(servsock, buf, sizeof(int));
+    readed = read(sock, buf, sizeof(int));
     if(readed != sizeof(int)) {
         perror("The third read is wrong");
         exit(1);
     }
     content_length = *((int *) buf);
+
     // 4. получение содержимого файла
     readed = 0;
     int internal_readed = 0;
     do {
-        internal_readed = read(servsock, buf, 1023);
+        internal_readed = read(sock, buf, 1023);
         write(filefd, buf, internal_readed);
-
         buf[internal_readed] = '\0';
         readed += internal_readed;
     } while(readed < content_length);
 
-    printf("I recieved a file", servsock);
-    return filefd;
+    close(filefd);
+    return 0;
 }
 
 // возвращает длину файла по его пути (или тупо имени файла)
@@ -176,7 +165,6 @@ int main(int argc, char** argv) {
         perror("Incorrect input data");
         exit(1);
     }
-    char key[1024];//здесь будет зранится публичный ключ выбранного клиента
 
     /*Сгенерируем необходимые для работы ключи*/
     //указатель на структуру для хранения ключей
@@ -207,18 +195,13 @@ int main(int argc, char** argv) {
 		fclose(priv_key_file);
     /*Выполнение подключений*/
 
-    pub_key_file = fopen(PUBLIC, "rb");
-    if(pub_key_file == NULL) {
-        perror("Problems with opening public-key file\n");
-        exit(-1);
-    }
 	int sock;
 	struct sockaddr_in addr;
 	int bytes_read;
 	char buf[1024];
 	sock = socket( AF_INET, SOCK_STREAM, 0 );
-	if( sock < 0 ) {
-		perror( "socket" );
+	if(sock < 0) {
+		perror("socket");
 		exit(1);
 	}
 
@@ -255,11 +238,6 @@ int main(int argc, char** argv) {
 				return 0;
 			}
 			printf("%s", buf);
-            char* buf1 = strchr(buf, ' ');
-            buf1++;
-            if (strcmp(buf1, "requested your public key") == 0){//отправка паблик кея
-                send_file(PUBLIC, sock);
-            }
 		} else if(FD_ISSET(0, &foread)){
 			if (fgets(buf, 1024, stdin) == NULL){
 				perror("fgets");
@@ -267,9 +245,9 @@ int main(int argc, char** argv) {
 			}
 			// Отправка сообщений
 			if (buf[0] != '/'){
-                if (!flag){//если оно первое - послать имя
+                if (!flag){//если оно первое - послать имя и ключик
                     send(sock,nickname, strlen(nickname), 0);
-                    //there must be send(key)!!
+                    send_file(PUBLIC, sock);
                     flag = 1;
                 }
                 else send(sock, buf, strlen(buf) + 1, 0);
@@ -281,7 +259,14 @@ int main(int argc, char** argv) {
 				}
 			} else if(strncmp(buf, "/encrypted ",11) == 0){
                 if(strchr(buf + 11, ' ') != NULL) {
-					send_file(PUBLIC, sock);
+                    int msgfd = open("msg.txt", O_CREAT || O_TRUNC, 00666);
+                    if(write(msgfd, buf+11, strlen(buf+11)) < strlen(buf+11)){
+                        perror("write msg to file");
+                        exit(1);
+                    }
+                    send(sock, buf, strlen(buf) +1, 0);
+                    recv_file(sock);
+					//printf("recieved file\n");
 				} else {//значит там либо нет имени,либо только имя и больше ничего
 					printf( "Incorrect input format.\n" );
 				}
@@ -291,7 +276,6 @@ int main(int argc, char** argv) {
 		}
 	}
 	close( sock );
-
 	/*Освобождение памяти*/
     RSA_free(rsa);
 	return 0;
