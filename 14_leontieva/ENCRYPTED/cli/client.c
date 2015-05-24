@@ -258,12 +258,23 @@ int main(int argc, char** argv) {
 					printf( "Incorrect input format.\n" );
 				}
 			} else if(strncmp(buf, "/encrypted ",11) == 0){
-                if(strchr(buf + 11, ' ') != NULL) {
-                    int msgfd = open("msg.txt", O_CREAT || O_TRUNC, 00666);
-                    if(write(msgfd, buf+11, strlen(buf+11)) < strlen(buf+11)){
+                char* pos;
+                if((pos = strchr(buf + 11, ' ')) != NULL) {
+                    //Запись шифруемого сообщения в файл
+                    char msg[255];
+                    strcpy(msg,argv[3]);
+                    strcat(msg, " said: ");
+                    strcat(msg, pos);
+                    int msgfd = open("msg.txt", O_WRONLY | O_CREAT | O_TRUNC, 00666);
+                    if (msgfd < 0) {
+                        perror("open msg.txt");
+                        exit(1);
+                    }
+                    if(write(msgfd, msg, strlen(msg)) < strlen(msg)){
                         perror("write msg to file");
                         exit(1);
                     }
+
                     send(sock, buf, strlen(buf) +1, 0);
                     recv_file(sock);
 					//printf("recieved file\n");
