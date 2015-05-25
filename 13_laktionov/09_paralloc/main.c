@@ -77,8 +77,7 @@ struct str* getStringsPositions(char* file){
 }
 
 int main(int argc, const char * argv[]) {
-    semFirst = dispatch_semaphore_create(1);
-    semThird = dispatch_semaphore_create(1);
+
     int forksCounter = (int)argv[2];
     char* filepath = (char*)argv[1];
     
@@ -89,13 +88,15 @@ int main(int argc, const char * argv[]) {
     char* text = (char*)mmap(NULL, fileInfo.st_size, PROT_READ, MAP_SHARED, secondPageFile, 0);
     struct str* stringsPositions = getStringsPositions(text);
     int firstPageFile = shm_open("first_page.txt", O_RDWR | O_CREAT);
+    semFirst = dispatch_semaphore_create(1);
     write(firstPageFile, stringsPositions, numberOfStrings*sizeof(struct str));
     
     struct str* first = mmap(NULL, numberOfStrings*sizeof(struct str), PROT_READ | PROT_WRITE, MAP_SHARED, firstPageFile, 0);
     
     int thirdPageFile = shm_open("first_page.txt", O_RDWR | O_CREAT);
-    ftruncate(thirdPageFile, fileInfo.st_size*2 + numberOfStrings*64);
-    void* third = mmap(NULL, fileInfo.st_size*2 + numberOfStrings*64, PROT_READ | PROT_WRITE, MAP_SHARED, thirdPageFile, 0);
+    ftruncate(thirdPageFile, fileInfo.st_size*2 + numberOfStrings*2*sizeof(int));
+    void* third = mmap(NULL, fileInfo.st_size*2 + numberOfStrings*2*sizeof(int), PROT_READ | PROT_WRITE, MAP_SHARED, thirdPageFile, 0);
+    semThird = dispatch_semaphore_create(1);
     struct resStr* header = (struct resStr*)malloc(numberOfStrings*sizeof(struct resStr));
     memcpy(third, header, numberOfStrings*sizeof(struct resStr));
     int headerOffset = numberOfStrings*sizeof(struct resStr);
