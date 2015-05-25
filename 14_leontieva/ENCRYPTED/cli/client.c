@@ -48,6 +48,58 @@ void chifer(char* tmp_path, char* pub_key_path){
     }
     //return pubKey;
 }
+//Функция, которая по образу и подобию функции выше расшифровывает содержимое файла rsa_file_path ключом priv_key_path
+void dechifer(char* rsa_file_path, char* priv_key_path){
+    RSA *privKey = NULL;
+    RSA *prpr = NULL;
+    FILE *priv_key_file;
+    unsigned char *ptext = NULL;
+    unsigned char *ctext = NULL;
+
+    //Открываем входной и создаём выходной файл
+    int inf, outf;
+    inf = open(rsa_file_path, O_RDWR);
+    if(inf < 0) {
+        perror("Problems with opening rsa file");
+        exit(errno);
+    }
+    outf = open("./result.file", O_CREAT|O_TRUNC|O_RDWR, 0600);
+    if(outf < 0) {
+        perror("Problems with opening file");
+        exit(errno);
+    }
+
+    //Открываем ключевой файл и считываем секретный ключ
+    priv_key_file = fopen(priv_key_path, "rwb");
+    if (priv_key_file== NULL) perror("fopen!");
+    privKey = PEM_read_RSAPrivateKey(priv_key_file, &prpr, NULL, "hello");
+    if (privKey == NULL) perror("Priv key is NULL");
+    if (prpr == NULL) perror("prpr is NULL");
+
+    //Определяем размер ключа
+    size_t key_size;
+    key_size = RSA_size(privKey);
+    ctext = malloc(key_size);
+    ptext = malloc(key_size);
+
+    //Дешифруем файл
+    int intlen, outlen;
+    while(1) {
+        intlen = read(inf, ctext, 2048);
+        if(intlen <= 0) {
+            break;
+        }
+        outlen = RSA_private_decrypt(intlen, ctext, ptext, privKey, RSA_PKCS1_PADDING);
+        if(outlen < 0) {
+            exit(0);
+        }
+
+        write(outf, ptext, outlen);
+    }
+
+    close(outf);
+    close(inf);
+}
 void send_file(char* path, int sock){//works
     int fd = open(path, O_RDONLY);
     if(fd == -1) {
@@ -238,7 +290,22 @@ int main(int argc, char** argv) {
 			}
 			printf("%s", buf);
 			if (strncmp(buf, "Your pubkey was requsted by ",28) == 0){
-                recv_file(sock);
+                if(recv_file(sock)){
+                    perror("recv(rsa.file)");
+                    exit(1);
+                };
+                dechifer("./rsa.file", PRIVAT);
+                int resfd = open("./result.file", O_RDONLY, 00666);
+                if (resfd < 0){
+                    perror("open(result.file");
+                    exit(1);
+                }
+                if(read(resfd, buf, 1024) < 0){
+                    perror("read(resul.file)");
+                    exit(1);
+                }
+                printf("%s", buf);
+                close(resfd);
 			}
 		} else if(FD_ISSET(0, &foread)){
 			if (fgets(buf, 1024, stdin) == NULL){
@@ -282,9 +349,9 @@ int main(int argc, char** argv) {
                     strncpy(name, buf+11, pos - buf-11);
                     strcat(name, ".key");
                     chifer("./msg.txt", name);
-                    printf("began to send rsa file\n");
+                    //printf("began to send rsa file\n");
                     send_file("rsa.file",sock);
-                    printf("success(rsa.file)\n");
+                    //printf("success(rsa.file)\n");
 				} else {//либо нет имени,либо только имя и больше ничего
 					printf( "Incorrect input format.\n" );
 				}
