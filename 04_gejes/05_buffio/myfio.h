@@ -14,6 +14,7 @@ typedef struct
     int fd;
     char* buf;
     int occlen;
+    int bufSize;
 } myFile;
 
 myFile* myfopen(const char* filename, const char* mode);
@@ -22,5 +23,7 @@ int myfwrite(myFile* file, const char* input, int len);
 int myfread(myFile* file, char* output, int len);
 
 int myfclose(myFile* file);
+
+void setFileBufSize(int newSize);
 
 #endif // MYFIO_H_INCLUDED

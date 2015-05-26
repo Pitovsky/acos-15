@@ -5,7 +5,7 @@
 
 int main(int argc, char** argv)
 {
-    myFile* fout = myfopen("testfile.txt", "wt");
+    myFile* fout = myfopen("testfile.txt", "wtS10");
     char testtext[256];
     scanf("%s", testtext);
     myfwrite(fout, testtext, strlen(testtext));

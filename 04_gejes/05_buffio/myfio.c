@@ -1,12 +1,18 @@
 #include "myfio.h"
 
-static int BUF_SIZE = 10;
+static int defaultBufSize = 1024; //default buffer size
+
+void setFileBufSize(int newSize)
+{
+    defaultBufSize = newSize;
+}
 
 myFile* myfopen(const char* filename, const char* mode)
 {
     int flag = 0;
     int i;
     int modelen = strlen(mode);
+    int bufSize = defaultBufSize;
 
     for (i = 0; i < modelen; ++i)
     {
@@ -18,14 +24,20 @@ myFile* myfopen(const char* filename, const char* mode)
             flag = flag | O_RDONLY;
         else if (mode[i] == 'a')
             flag = flag | O_APPEND;
+        else if (mode[i] == 'S')
+            sscanf(mode + i + 1, "%d", &bufSize);
     }
 
     myFile* newFileStruct = (myFile*)malloc(sizeof(myFile));
-    newFileStruct->buf = (char*)malloc(sizeof(char)*BUF_SIZE);
     newFileStruct->fd = open(filename, flag, 0666);
     if (newFileStruct->fd < 0)
+    {
+        free(newFileStruct);
         return NULL;
+    }
     newFileStruct->occlen = 0;
+    newFileStruct->buf = (char*)malloc(sizeof(char)*bufSize);
+    newFileStruct->bufSize = bufSize;
     return newFileStruct;
 }
 
@@ -35,7 +47,7 @@ int myfwrite(myFile* file, const char* input, int len)
     while (total < len)
     {
         int i = total;
-        while (i < len && file->occlen < BUF_SIZE)
+        while (i < len && file->occlen < file->bufSize)
         {
             file->buf[file->occlen] = input[i];
             ++i;
@@ -43,14 +55,14 @@ int myfwrite(myFile* file, const char* input, int len)
         }
         if (i < len)
         {
-            int writtenBytes = write(file->fd, file->buf, BUF_SIZE);
+            int writtenBytes = write(file->fd, file->buf, file->bufSize);
             if (writtenBytes <= 0)
                 return total + writtenBytes;
             else
             {
                 total = total + writtenBytes;
                 int j;
-                for (j = writtenBytes; j < BUF_SIZE; ++j) //if not all bytes was written
+                for (j = writtenBytes; j < file->bufSize; ++j) //if not all bytes was written
                     file->buf[j - writtenBytes] = file->buf[j];
                 file->occlen = file->occlen - writtenBytes;
             }
