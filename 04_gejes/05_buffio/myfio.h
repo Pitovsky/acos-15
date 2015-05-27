@@ -12,7 +12,9 @@
 typedef struct
 {
     int fd;
-    char* buf;
+    char* inbuf;
+    char* outbuf;
+    int waitpos;
     int occlen;
     int bufSize;
 } myFile;
