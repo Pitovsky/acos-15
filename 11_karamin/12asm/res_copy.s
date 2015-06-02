@@ -1,4 +1,5 @@
 .data
+        .set sys_exit_num, 60
 msg_pal_ok:
         .string "pal OK\n"
 msg_not_pal:
@@ -32,10 +33,7 @@ new_line:
 	.byte	10
 line_end:
 	.zero  	1
-
 iterator:
-        .long    0
-notr:
         .long    0
 weak_check:
 	.long	1
@@ -49,8 +47,10 @@ left:
         .long    0
 right:
         .long    0
-
-
+strnum_:
+        .long    0
+strnum:
+        .long    0
 .bss
 mystr:
         .space   1024
@@ -60,90 +60,88 @@ dynamic_string_pointer:
         .space   8
 input:
         .space   8
+max_buf:
+        .space   8
 
 .text
     .globl main
     .type main, @function
     .type get, @function
     .type check_pal, @function
-    .type printc, @function
-    .type printd, @function
-    .type prints, @function
+    .type static_limit, @function
+    .type dynamic_limit, @function
 main:
     movq %rsp, %rbp #for correct debugging
+#Вытаскиваем из переменной окружения максимальный буффер
+    movq $env_name, %rdi
+    call getenv
+    movq %rax, max_buf
+#Если getenv != NULL limit_dynamic = atoi(max_buf);
+    cmpq $0, %rax
+    je open_file
+#atoi(max_buf)
+    movq $max_buf, %rdi
+    movb $0, %al
+    call atoi
+#limit_dynamic = atoi(max_buf)
+    movq %rax, limit_dynamic
+#printf limit dynamic
+    movq $dformat, %rdi
+    movq limit_dynamic, %rsi
+    movb $0, %al
+    call printf   
+open_file:
 #FILE* input = fopen(file_name, open_mode);
     movq $file_name, %rdi
     movq $open_mode, %rsi
     movb $0, %al
     call fopen
     movq %rax, input
+
 #fscanf(input, format, str);
-#    movq input, %rdi
-#    movq $sformat, %rsi
-#    movq $mystr, %rdx
-#    movb $0, %al
-#    call fscanf
-#while
+    movq input, %rdi
+    movq $dformat, %rsi
+    movq $strnum, %rdx
+    movb $0, %al
+    call fscanf
+
 while_begin:
 #char* current_string = get(input);
+#Вновь получаем следующую строку из файла input.txt
     pushq input
     call get
     popq input
-#if (feof(input)) goto finish;
-    movq input, %rdi
-    movb $0, %al
-    call feof
-    cmp $0, %rax
-    jne finish
+
 #printf(read_ok, string);
+#Выводим вновь считанную строку
     movq $read_ok, %rdi
     movq $current_string, %rsi
     movb $0, %al
     call printf
-    
+
 #check_pal()
     call check_pal
-while_end:
+#Счётчик строк для ввода
+    decq strnum
+    movq $dformat, %rdi
+    movq strnum, %rsi
+    movb $0, %al
+    call printf
+    cmpq $0, strnum
+    jne while_begin
 
+#jmp while_begin
+while_end:jmp finish
+
+last_str:
+    call check_pal
+    
 finish:
 #fclose(input);
     movq input, %rdi
     movb $0, %al
     call fclose
-ret
-    
-
-  
-    
-      
-        
-          
-            
-              
-                
-                  
-                    
-                      
-                        
-                          
-printc:
-        movq $cformat, %rdi
-        movq %rax, %rsi
-        movb $0, %al
-        call printf
-ret
-printd:
-        movq $dformat, %rdi
-        movq %rax, %rsi
-        movb $0, %al
-        call printf 
-ret
-prints:            
-        movq $sformat, %rdi
-        movq %rax, %rsi
-        movb $0, %al
-        call printf 
-ret      
+ret                     
     
 
 check_pal:
@@ -199,10 +197,10 @@ popq %rdx              #
     incq left
     decq right
 #Выведем сравненный символ и перейдём в начало цикла
-    movq $cformat, %rdi
-    movb %dl, %sil
-    movb $0, %al
-    call printf
+#    movq $cformat, %rdi
+#    movb %dl, %sil
+#    movb $0, %al
+#    call printf
 jmp pal
 pal_end:    
 
@@ -277,8 +275,6 @@ check_pal_end: ret
 
 
 
-
-
 get:
 #prolog of program
     pushq %rbp
@@ -296,22 +292,18 @@ get:
     movq current_string, %rbx
     movq $0, iterator
 loop_begin:
-#Вывод итератора
-    pushq %rax
-        movq $iformat, %rdi
-        movq iterator, %rsi
-        movb $0, %al
-        call printf
-    popq %rax   
-#Вывод итератора  
-#Проверка на получение конца строки   
-    cmp $10, %rax
+#Проверка на получение конца строки '\n'  
+    cmpq $10, %rax
     je loop_end
-#Проверка на получение конца строки
-#Проверка на получение конца файла
-    cmp $-1, %rax
-    je loop_end
-#Проверка на получение конца файла
+#Проверка на переполнение статического лимита
+    movq iterator, %rdx
+    cmpq %rdx, limit_static
+    jne skip_static
+    call static_limit
+#Проверка на переполнение динамического лимита
+    cmpq %rdx, limit_dynamic
+    call dynamic_limit
+skip_static:
 #ставим считанный символ на i-ый элемент строки    
 #ставим терминатор на i+1-ый элемент строки    
     movq line_end, %rcx            
@@ -323,12 +315,11 @@ loop_begin:
 #Считываем символ    
     movq input, %rdi
     movb $0, %al
-    call fgetc
-#Считываем символ               
+    call fgetc             
 #Инкремент цикла
-    addq $1, iterator
-#Инкремент цикла       
-loop_end: jne loop_begin
+    addq $1, iterator  
+    jmp loop_begin  
+loop_end:
 #get_end    
 
 #restore previos values of registers
@@ -338,4 +329,32 @@ loop_end: jne loop_begin
 #epilog of program
     popq %rbp
 get_end: ret
-  
+
+static_limit:
+pushq %rax
+#Выделим динамическую память
+    movq limit_dynamic, %rdi
+    incq %rdi
+    call malloc
+    movq %rax, dynamic_string_pointer
+#Скопируем старые данные
+    movq dynamic_string_pointer, %rdi
+    movq current_string, %rsi
+    movq limit_static, %rdx
+    call memcpy
+#Переприсвоим указатели
+    movq dynamic_string_pointer, %rdi
+    movq %rdi, current_string
+popq %rax
+ret
+
+dynamic_limit:
+    movq $sformat, %rdi
+    movq $owerflow, %rsi
+    movb $0, %al
+    call printf
+    
+    movq $sys_exit_num, %rax
+    movq $1, %rdi
+    syscall
+ret
