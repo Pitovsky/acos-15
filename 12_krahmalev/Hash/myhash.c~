@@ -6,10 +6,11 @@ struct list{
     struct list* next;
 };
 
-
+     
 struct list** MakeTable(int n){
     int i;
-    struct list** result = (struct list**) malloc(sizeof(struct list*)*n);
+    struct list** result;
+    result = (struct list**) malloc(sizeof(struct list*)*n);
     for(i=0;i<n;i++){
         result[i] = NULL;
     }
@@ -17,12 +18,12 @@ struct list** MakeTable(int n){
 };
 
 
-int hash(char* v){	
+int hash(char* v, int n){	
 	int i=0,j;
 	int code=0;
 	
 	for(j=0;j<strlen(v);j++){
-        	i = (i+v[j]) % 277;
+        	i = (i+v[j]) % n;
     	}
 	return(i);	
 };

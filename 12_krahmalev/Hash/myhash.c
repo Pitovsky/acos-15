@@ -6,7 +6,7 @@ struct list{
     struct list* next;
 };
 
-
+     
 struct list** MakeTable(int n){
     int i;
     struct list** result;
@@ -18,12 +18,12 @@ struct list** MakeTable(int n){
 };
 
 
-int hash(char* v){	
+int hash(char* v, int n){	
 	int i=0,j;
 	int code=0;
 	
 	for(j=0;j<strlen(v);j++){
-        	i = (i+v[j]) % 277;
+        	i = (i+v[j]) % n;
     	}
 	return(i);	
 };
@@ -34,7 +34,7 @@ struct list* Add(struct list* to,char* v, int n){
     now->key = v;
     now->next = to;
     now->value = n;
-	printf("%s added as %d\n", v,n);
+	printf("%s added as %d\n", v);
     return now;
 };
 

@@ -4,7 +4,7 @@
 
 #include <string.h>
 
-int hash(char* v);
+int hash(char* v, int n);
 
 struct list* Add(struct list* ,char* , int );
 
