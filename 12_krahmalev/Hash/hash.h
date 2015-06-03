@@ -4,9 +4,9 @@
 
 #include <string.h>
 
-int hash(char* v, int n);
+int hash(char* v);
 
-struct list* Add(struct list* ,char* , int );
+struct list* Add(struct list* ,char*, int);
 
 void deleteElement(struct list** , char* );
 

@@ -18,12 +18,12 @@ struct list** MakeTable(int n){
 };
 
 
-int hash(char* v, int n){	
+int hash(char* v){	
 	int i=0,j;
 	int code=0;
 	
 	for(j=0;j<strlen(v);j++){
-        	i = (i+v[j]) % n;
+        	i = (i+v[j]) % size;
     	}
 	return(i);	
 };
@@ -33,8 +33,8 @@ struct list* Add(struct list* to,char* v, int n){
     struct list* now = (struct list*) malloc(sizeof(struct list));
     now->key = v;
     now->next = to;
-    now->value = n;
-	printf("%s added as %d\n", v,n);
+    now->value = size;
+	printf("%s added as %d\n", v, n);
     return now;
 };
 

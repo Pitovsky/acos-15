@@ -1,3 +1,4 @@
+int size;
 #include"hash.h"
 
 int main()
@@ -7,17 +8,16 @@ int main()
 	struct list** table; 
 	FILE* test= fopen("test.txt", "r");
 	FILE* out = fopen("output.txt", "w");
-	fscanf(test,"%d", &n);
-	table = MakeTable(n);
+	fscanf(test,"%d", &size);
+	table = MakeTable(size);
 	str=(char*) malloc(sizeof(char)*250);
-	for(i=0;i<n;i++)
+	for(i=0;i<size;i++)
 	{
 		fscanf(test, "%s", str);
-		l=hash(str,n);	
+		l=hash(str);	
 		table[l]=Add(table[l], str, l);
 	}
-		//deleteTable(table);
-
+		
 	fscanf(test,"%d", &n);
 	for(i=0;i<n;i++)	
 	{
